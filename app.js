@@ -1,41 +1,66 @@
+/* eslint-disable no-unused-vars */
+// premiotAllison-v2 — multi-clinic premium calculator
+// Hebrew RTL. Domain terms in Hebrew. Calc logic unchanged from v1, just per-clinic.
+
+// ---- Currency / number formatters (single canonical pair) ----
+const ILS = new Intl.NumberFormat('he-IL', {
+  style: 'currency',
+  currency: 'ILS',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const ILS0 = new Intl.NumberFormat('he-IL', {
+  style: 'currency',
+  currency: 'ILS',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+function fmtILS(n) {
+  if (!isFinite(n)) return ILS.format(0);
+  return ILS.format(n);
+}
+function fmtILS0(n) {
+  if (!isFinite(n)) return ILS0.format(0);
+  return ILS0.format(n);
+}
+
 function v(id) {
-  return parseFloat(document.getElementById(id).value) || 0;
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  return parseFloat(el.value) || 0;
 }
 function set(id, val, unit) {
   const el = document.getElementById(id);
   if (el) el.textContent = val + (unit ? ' ' + unit : '');
 }
 
-// ---- TOOLTIP DATA ----
-// All tooltip content lives here in JS — safe from HTML corruption during file transfer
+// ---- TOOLTIPS ----
 const TIPS = {
   tarif: 'תעריף הסכם קבוע: 40.49 ₪ לשעה לטיפול. לא ניתן לשינוי.',
   takara:
-    'התקרה המוצגת היא למשרה מלאה (100%):\n• עובדת רגילה: ₪5,400\n• ותיקה: ₪5,838.25\n\nהתקרה בפועל שלך מחושבת לפי אחוז המשרה החודשי:\nתקרה בפועל = (שעות תקן ÷ שעות פוטנציאליות) × תקרה מלאה\n\nלדוגמה: שעות תקן 80 מתוך 160 פוטנציאליות = 50% משרה → תקרה של ₪2,700',
+    'התקרה המוצגת היא למשרה מלאה (100%):\n• עובדת רגילה: ₪5,400\n• ותיקה: ₪5,838.25\n\nהתקרה בפועל מחושבת לפי אחוז המשרה החודשי לכל מרפאה:\nתקרה בפועל למרפאה = (שעות תקן + שעות נוספות + היעדרות מזכה במרפאה ÷ שעות פוטנציאליות משותף) × תקרה מלאה',
   makdam: 'בהתפתחות הילד ריפוי בעיסוק: כל תפוקה שווה ×2 טיפולים משוקללים. לא ניתן לשינוי.',
   shaPotential:
-    'מקסימום שעות לחודש למשרה מלאה (100%):\n• יום רגיל (א-ה): 8 שעות\n• ערב חג: 4 שעות\n• חול המועד: 5 שעות\n• יום חג: 0 שעות\n• יום מקוצר (פורים/חנוכה/יום המשפחה): 8 שעות ✓\n\n⚠️ יום מקוצר — למרות הקיצור בפועל, נספר כיום עבודה מלא (8 שעות) לצורך חישוב שעות פוטנציאליות.\n\nמשמש לחישוב תקרת התשלום החודשית.',
+    'מקסימום שעות לחודש למשרה מלאה (100%):\n• יום רגיל (א-ה): 8 שעות\n• ערב חג: 4 שעות\n• חול המועד: 5 שעות\n• יום חג: 0 שעות\n• יום מקוצר (פורים/חנוכה/יום המשפחה): 8 שעות ✓\n\nשעות פוטנציאליות הן משותפות לכל המרפאות.',
   shaTeken:
-    'חשבי לפי הימים שאת עובדת בשבוע וכמה פעמים כל יום מופיע בלוח השנה החודשי.\n\nלדוגמה: את עובדת א׳ (7 שעות), ד׳ (7 שעות), ה׳ (8 שעות)\nבחודש עם 5 ימי א׳, 5 ימי ד׳, 4 ימי ה׳:\n(7×5) + (7×5) + (8×4) = 102 שעות\n\n⚠️ שימי לב לימים מיוחדים לפי איזה יום שבוע הם נופלים:\n• ערב חג — 50% משעות היום הרגיל\n• חג — 0 שעות\n• חול המועד — 62.5% משעות היום הרגיל\n• יום בחירה — לא נכנס לתקן, מוכנס להיעדרות מזכה\n\n🔄 יום מקוצר (חנוכה/פורים וכד׳) — יתעדכן בהמשך',
+    'שעות תקן לפי המשרה שלך במרפאה הזו.\n\nלדוגמה: את עובדת א׳ (7 שעות), ד׳ (7 שעות), ה׳ (8 שעות)\nבחודש עם 5 ימי א׳, 5 ימי ד׳, 4 ימי ה׳:\n(7×5) + (7×5) + (8×4) = 102 שעות',
   headrutMazaka:
-    'היעדרויות המזכות בפרמיית העדרות:\n• חופש שנתי\n• יום בחירה\n• יום זיכרון – עובד שכול\n• השתלמות מתחת ל־3 ימים\n\nמופחתות משעות התקן בחישוב שעות העבודה, ומזכות בפרמיה נפרדת.\n\n⚠️ אם ההיעדרות חלה על יום מקוצר (ערב חג / חול המועד) — הכנס את השעות המקוצרות בפועל, לא את שעות היום המלא.',
+    'היעדרויות המזכות בפרמיית העדרות:\n• חופש שנתי\n• יום בחירה\n• יום זיכרון – עובד שכול\n• השתלמות מתחת ל־3 ימים',
   headrutLoMazaka:
-    'היעדרויות שאינן מזכות בפרמיית העדרות:\n• מחלת עובד\n• מחלת ילד\n• הצהרה\n• מחלת בן משפחה מכל סוג\n• עקב הריון, טיפולי פריה\n• תאונת עבודה\n• נישואים – של העובד או בן/בת\n• יום לידה בן/בת\n• ברית מילה\n• ימי אבל\n• השתלמות מעל 3 ימים\n• שביתה\n• ביקור אצל רופא תעסוקתי\n• מילואים\n\nמופחתות משעות התקן בחישוב שעות העבודה.\n\n⚠️ אם ההיעדרות חלה על יום מקוצר (ערב חג / חול המועד) — הכנס את השעות המקוצרות בפועל, לא את שעות היום המלא.',
-  shaAvoda:
-    'שעות עבודה = שעות תקן − היעדרות מזכה − מחלה − שלט + שעות עודפות\n\nשעות אלו הן המכנה לחישוב ממוצע הטיפולים.\nשלט ושעות עודפות מוזנות בסעיף תפוקות.',
+    'היעדרויות שאינן מזכות בפרמיית העדרות:\n• מחלת עובד / מחלת ילד / הצהרה\n• מחלת בן משפחה\n• הריון / טיפולי פריה / תאונת עבודה\n• נישואים / יום לידה בן/בת / ברית מילה\n• ימי אבל / שביתה / מילואים\n• השתלמות מעל 3 ימים\n• ביקור אצל רופא תעסוקתי',
+  shaAvoda: 'שעות עבודה = שעות תקן − היעדרות מזכה − מחלה − שלט + שעות עודפות',
   shaLaTipulit:
-    'שעות לא טיפוליות, המאושרות על ידי מנהלת המכון/ נילי/ מרב.\n\n⚠️ שלט מופחת משעות העבודה ולא נכנס למכנה — פחות שלט = ממוצע גבוה יותר = פרמיה גבוהה יותר.',
-  shaNosfot:
-    'שעות עודפות מעבר לשעות התקן שלך, שמופיעות בדף הפרמיות.\nלרוב מדובר בדקות בודדות — לא משהו שמתכננים, פשוט מעתיקים מהדף.\n\nנכנסות למכנה ולסך שעות לתשלום.',
+    'שעות לא טיפוליות, המאושרות על ידי מנהלת המכון.\n⚠️ שלט מופחת משעות העבודה ולא נכנס למכנה — פחות שלט = ממוצע גבוה יותר.',
+  shaNosfot: 'שעות עודפות מעבר לשעות התקן שלך, שמופיעות בדף הפרמיות.',
   tifukot:
     'קודי תפוקה ב-Clicks:\n• 50011 - טיפול\n• 50008 - אבחון\n• 50016 - ישיבה\n• 50038 - דוח\n• 50042 - ישיבה עם גננת\n\nכל קוד = תפוקה אחת.',
   avgShnati:
     'ממוצע הטיפולים לתשלום של 12 החודשים הקודמים.\nמשמש לחישוב פרמיית ההעדרות.\nהכנס ידנית מהתלוש החודשי.',
   shalet:
-    'כשמעבירים שעות עבודה לשלט:\n• המכנה קטן ← ממוצע עולה\n• סך שעות לתשלום לא משתנה\n• התקרה לא משתנה\n\nלכן הפרמיה עולה בלי לשנות את התקרה!\n\nמגבלה: שלט ≤ שעות עבודה (כלל 50%)',
+    'כשמעבירים שעות עבודה לשלט:\n• המכנה קטן ← ממוצע עולה\n• סך שעות לתשלום לא משתנה\n• התקרה לא משתנה',
 };
 
-// Build tooltip popup element once, reuse it
+// Tooltip popup (built once)
 const tipPopup = document.createElement('div');
 Object.assign(tipPopup.style, {
   position: 'fixed',
@@ -43,7 +68,7 @@ Object.assign(tipPopup.style, {
   width: '240px',
   display: 'none',
   background: '#1e293b',
-  color: '#e2e8f0',
+  color: '#f1f5f9',
   borderRadius: '8px',
   padding: '10px 14px',
   fontSize: '12px',
@@ -51,7 +76,7 @@ Object.assign(tipPopup.style, {
   whiteSpace: 'pre-line',
   textAlign: 'right',
   border: '1px solid rgba(255,255,255,0.1)',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
   pointerEvents: 'none',
   direction: 'rtl',
   fontFamily: "Heebo, 'Arial Hebrew', Arial, sans-serif",
@@ -59,7 +84,6 @@ Object.assign(tipPopup.style, {
 document.body.appendChild(tipPopup);
 
 let activeTipBtn = null;
-
 function showTip(btn) {
   const key = btn.getAttribute('data-tip');
   if (!key || !TIPS[key]) return;
@@ -71,24 +95,20 @@ function showTip(btn) {
   activeTipBtn = btn;
   btn.classList.add('open');
   tipPopup.textContent = TIPS[key];
-  // Show offscreen first to measure height
   tipPopup.style.visibility = 'hidden';
   tipPopup.style.display = 'block';
   const popupWidth = 240;
   const popupHeight = tipPopup.offsetHeight;
   const rect = btn.getBoundingClientRect();
-  // Horizontal: align right edge of popup with right edge of button, clamp to viewport
   let left = rect.right - popupWidth;
   if (left < 8) left = 8;
   if (left + popupWidth > window.innerWidth - 8) left = window.innerWidth - popupWidth - 8;
-  // Vertical: above button, flip below if not enough space
   let top = rect.top - popupHeight - 8;
   if (top < 8) top = rect.bottom + 8;
   tipPopup.style.left = left + 'px';
   tipPopup.style.top = top + 'px';
   tipPopup.style.visibility = 'visible';
 }
-
 function hideTip() {
   if (activeTipBtn) {
     activeTipBtn.classList.remove('open');
@@ -96,8 +116,6 @@ function hideTip() {
   }
   tipPopup.style.display = 'none';
 }
-
-// Wire up all tip buttons via hover (event delegation)
 document.addEventListener('mouseover', function (e) {
   const btn = e.target.closest('[data-tip]');
   if (btn) showTip(btn);
@@ -106,8 +124,6 @@ document.addEventListener('mouseout', function (e) {
   const btn = e.target.closest('[data-tip]');
   if (btn) hideTip();
 });
-
-// Touch support for mobile
 document.addEventListener(
   'touchstart',
   function (e) {
@@ -126,13 +142,11 @@ document.addEventListener(
   { passive: false },
 );
 
-// Detect if running in a limited viewer (no proper window.location, sandboxed webview, etc.)
+// WebView detector
 (function () {
   try {
-    // HTML viewer apps often have no real navigation or are file:// with restrictions
-    // A simple heuristic: if localStorage throws or UA looks like a webview
     const ua = navigator.userAgent || '';
-    const isWebView = /; wv\)/.test(ua); // Android WebView flag
+    const isWebView = /; wv\)/.test(ua);
     if (isWebView) {
       document.getElementById('wrong-app-banner').style.display = 'block';
     }
@@ -141,57 +155,85 @@ document.addEventListener(
   }
 })();
 
+// ---- STATE: clinics ----
+/** @type {Array<{id:string,name:string,shaTeken:string,shaNosfot:string,shaLaTipulit:string,headrutMazaka:string,headrutLoMazaka:string,tifukot:string,expanded:boolean}>} */
+let clinics = [];
+let lastEditedClinicId = null;
+let sharedLocked = false;
+
+function newClinicObj(name) {
+  return {
+    id: 'c_' + Math.random().toString(36).slice(2, 9),
+    name: name || '',
+    shaTeken: '',
+    shaNosfot: '',
+    shaLaTipulit: '',
+    headrutMazaka: '',
+    headrutLoMazaka: '',
+    tifukot: '',
+    expanded: true,
+  };
+}
+
 // ---- UNDO SYSTEM ----
-const UNDO_FIELDS = [
-  'shaPotential',
-  'shaTeken',
-  'shaNosfot',
-  'shaLaTipulit',
-  'headrutMazaka',
-  'headrutLoMazaka',
-  'tifukot',
-  'avgShnati',
-];
 let undoStack = [];
 const MAX_UNDO = 20;
 
-function saveUndoSnapshot() {
-  const snapshot = {};
-  UNDO_FIELDS.forEach((id) => {
-    snapshot[id] = document.getElementById(id).value;
-  });
-  snapshot.isVetek = document.getElementById('takara').value == 5838.25 ? '1' : '0';
-  // Only save if different from last snapshot
-  if (undoStack.length > 0) {
-    const last = undoStack[undoStack.length - 1];
-    const same =
-      UNDO_FIELDS.every((id) => last[id] === snapshot[id]) && last.isVetek === snapshot.isVetek;
-    if (same) return;
+function snapshotState() {
+  return {
+    isVetek: parseFloat(document.getElementById('takara').value) === 5838.25 ? '1' : '0',
+    shaPotential: document.getElementById('shaPotential').value,
+    avgShnati: document.getElementById('avgShnati').value,
+    clinics: clinics.map((c) => ({ ...c })),
+  };
+}
+function statesEqual(a, b) {
+  if (a.isVetek !== b.isVetek) return false;
+  if (a.shaPotential !== b.shaPotential) return false;
+  if (a.avgShnati !== b.avgShnati) return false;
+  if (a.clinics.length !== b.clinics.length) return false;
+  for (let i = 0; i < a.clinics.length; i++) {
+    const fields = [
+      'name',
+      'shaTeken',
+      'shaNosfot',
+      'shaLaTipulit',
+      'headrutMazaka',
+      'headrutLoMazaka',
+      'tifukot',
+    ];
+    for (const f of fields) {
+      if (a.clinics[i][f] !== b.clinics[i][f]) return false;
+    }
   }
-  undoStack.push(snapshot);
+  return true;
+}
+function saveUndoSnapshot() {
+  const snap = snapshotState();
+  if (undoStack.length > 0 && statesEqual(undoStack[undoStack.length - 1], snap)) return;
+  undoStack.push(snap);
   if (undoStack.length > MAX_UNDO) undoStack.shift();
   updateUndoBtn();
 }
-
 function undoFields() {
   if (undoStack.length === 0) return;
-  const snapshot = undoStack.pop();
-  UNDO_FIELDS.forEach((id) => {
-    document.getElementById(id).value = snapshot[id] || '';
-  });
-  if (snapshot.isVetek === '1') setVetek(true);
-  else setVetek(false);
+  const snap = undoStack.pop();
+  document.getElementById('shaPotential').value = snap.shaPotential || '';
+  document.getElementById('avgShnati').value = snap.avgShnati || '';
+  if (snap.isVetek === '1') setVetek(true, true);
+  else setVetek(false, true);
+  clinics = snap.clinics.map((c) => ({ ...c }));
+  renderClinics();
   updateUndoBtn();
   calc();
 }
-
 function updateUndoBtn() {
   const btn = document.getElementById('undoBtn');
-  btn.style.opacity = undoStack.length > 0 ? '1' : '0.4';
-  btn.style.cursor = undoStack.length > 0 ? 'pointer' : 'default';
+  if (!btn) return;
+  btn.style.display = undoStack.length > 0 ? '' : 'none';
 }
 
-// ---- MONTH SELECTOR ----
+// ---- MONTH SELECTOR (for the small display + persistence) ----
 (function () {
   const monthNames = [
     'ינואר',
@@ -211,7 +253,6 @@ function updateUndoBtn() {
   const now = new Date();
   const curMonth = now.getMonth();
   const curYear = now.getFullYear();
-  // Show current month +/- 2 months
   for (let offset = -2; offset <= 2; offset++) {
     const m = (curMonth + offset + 12) % 12;
     const y = curYear + Math.floor((curMonth + offset) / 12);
@@ -223,373 +264,748 @@ function updateUndoBtn() {
   }
 })();
 
-// Wire up undo snapshots on input focus (captures "before" state)
-UNDO_FIELDS.forEach((id) => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('focus', saveUndoSnapshot);
+// snapshot capture on focus of any input
+document.addEventListener('focusin', function (e) {
+  const t = e.target;
+  if (!t) return;
+  if (
+    t.id === 'shaPotential' ||
+    t.id === 'avgShnati' ||
+    t.matches('[data-field]') ||
+    t.matches('[data-clinic-name]')
+  ) {
+    saveUndoSnapshot();
+  }
 });
 
-// ---- LOCAL STORAGE: auto-save & restore ----
-const SAVE_FIELDS = [
-  'shaPotential',
-  'shaTeken',
-  'shaNosfot',
-  'shaLaTipulit',
-  'headrutMazaka',
-  'headrutLoMazaka',
-  'tifukot',
-  'avgShnati',
-  'takara',
-];
+// ---- LOCAL STORAGE ----
+const STORAGE_KEY = 'premiot_clinics_v2';
+const LEGACY_KEY = 'premiot_data';
 
 function saveToStorage() {
   try {
-    const data = {};
-    SAVE_FIELDS.forEach((id) => {
-      data[id] = document.getElementById(id).value;
-    });
-    data.isVetek = document.getElementById('takara').value == 5838.25 ? '1' : '0';
-    data.selectedMonth = document.getElementById('selectedMonth').value;
-    localStorage.setItem('premiot_data', JSON.stringify(data));
-  } catch (e) {}
+    const data = {
+      isVetek: parseFloat(document.getElementById('takara').value) === 5838.25 ? '1' : '0',
+      shaPotential: document.getElementById('shaPotential').value,
+      avgShnati: document.getElementById('avgShnati').value,
+      selectedMonth: document.getElementById('selectedMonth').value,
+      clinics: clinics,
+      sharedLocked: sharedLocked,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    /* ignore */
+  }
 }
 
 function loadFromStorage() {
   try {
-    const raw = localStorage.getItem('premiot_data');
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    SAVE_FIELDS.forEach((id) => {
-      if (data[id] !== undefined && data[id] !== '') {
-        document.getElementById(id).value = data[id];
-      }
-    });
-    // Restore vetek button state
-    if (data.isVetek === '1') setVetek(true);
-    // Restore selected month
-    if (data.selectedMonth) {
-      const sel = document.getElementById('selectedMonth');
-      for (let i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].value === data.selectedMonth) {
-          sel.selectedIndex = i;
-          break;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.shaPotential !== undefined)
+        document.getElementById('shaPotential').value = data.shaPotential;
+      if (data.avgShnati !== undefined) document.getElementById('avgShnati').value = data.avgShnati;
+      if (data.isVetek === '1') setVetek(true, true);
+      if (data.selectedMonth) {
+        const sel = document.getElementById('selectedMonth');
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === data.selectedMonth) {
+            sel.selectedIndex = i;
+            break;
+          }
         }
+        document.getElementById('selectedMonthDisplay').textContent = data.selectedMonth;
       }
-      document.getElementById('selectedMonthDisplay').textContent = data.selectedMonth;
+      if (Array.isArray(data.clinics) && data.clinics.length > 0) {
+        clinics = data.clinics.map((c) => ({ ...newClinicObj(), ...c }));
+      }
+      if (data.sharedLocked) sharedLocked = true;
+      return;
     }
-  } catch (e) {}
+    // Migration from legacy single-clinic key
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const old = JSON.parse(legacy);
+      if (old.shaPotential !== undefined)
+        document.getElementById('shaPotential').value = old.shaPotential || '';
+      if (old.avgShnati !== undefined)
+        document.getElementById('avgShnati').value = old.avgShnati || '';
+      if (old.isVetek === '1') setVetek(true, true);
+      const c0 = newClinicObj('מרפאה 1');
+      c0.shaTeken = old.shaTeken || '';
+      c0.shaNosfot = old.shaNosfot || '';
+      c0.shaLaTipulit = old.shaLaTipulit || '';
+      c0.headrutMazaka = old.headrutMazaka || '';
+      c0.headrutLoMazaka = old.headrutLoMazaka || '';
+      c0.tifukot = old.tifukot || '';
+      clinics = [c0];
+      if (old.selectedMonth) {
+        const sel = document.getElementById('selectedMonth');
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === old.selectedMonth) {
+            sel.selectedIndex = i;
+            break;
+          }
+        }
+        document.getElementById('selectedMonthDisplay').textContent = old.selectedMonth;
+      }
+      try {
+        localStorage.removeItem(LEGACY_KEY);
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  } catch (e) {
+    /* ignore */
+  }
 }
 
-function calc() {
-  const tarif = v('tarif');
-  const takara = v('takara');
-  const makdam = v('makdam');
-  const shaPotential = v('shaPotential');
-  const shaLaTipulit = v('shaLaTipulit');
-  const shaTeken = v('shaTeken');
-  const headrutMazaka = v('headrutMazaka');
-  const headrutLoMazaka_val = v('headrutLoMazaka');
-  const shaNosfot = v('shaNosfot');
+// ---- CLINIC RENDER ----
+function renderClinics() {
+  const container = document.getElementById('clinicsContainer');
+  const template = document.getElementById('clinic-template');
+  container.innerHTML = '';
+
+  clinics.forEach((c, idx) => {
+    if (!c.name) c.name = 'מרפאה ' + (idx + 1);
+    const node = template.content.cloneNode(true);
+    const card = node.querySelector('[data-clinic-card]');
+    card.setAttribute('data-clinic-id', c.id);
+    if (c.expanded) card.classList.add('expanded');
+
+    const nameInput = card.querySelector('[data-clinic-name]');
+    nameInput.value = c.name;
+    nameInput.addEventListener('input', () => {
+      c.name = nameInput.value;
+      lastEditedClinicId = c.id;
+      saveToStorage();
+      updateApplyClinicDropdown();
+      updateChips();
+    });
+    nameInput.addEventListener('focus', saveUndoSnapshot);
+
+    const header = card.querySelector('[data-clinic-header]');
+    header.addEventListener('click', (e) => {
+      if (e.target.closest('[data-clinic-name]')) return;
+      if (e.target.closest('[data-clinic-delete]')) return;
+      c.expanded = !c.expanded;
+      card.classList.toggle('expanded', c.expanded);
+      saveToStorage();
+    });
+
+    const deleteBtn = card.querySelector('[data-clinic-delete]');
+    deleteBtn.style.display = clinics.length > 1 ? '' : 'none';
+    deleteBtn.addEventListener('click', () => {
+      if (clinics.length <= 1) return;
+      saveUndoSnapshot();
+      clinics = clinics.filter((cc) => cc.id !== c.id);
+      if (lastEditedClinicId === c.id) lastEditedClinicId = null;
+      renderClinics();
+      calc();
+    });
+
+    // Wire input fields
+    const inputs = card.querySelectorAll('[data-field]');
+    inputs.forEach((inp) => {
+      const field = inp.getAttribute('data-field');
+      inp.value = c[field] || '';
+      inp.setAttribute('data-clinic-id', c.id);
+    });
+
+    container.appendChild(node);
+  });
+
+  // Adjust expanded state — only most-recently-edited expanded when N>1
+  if (clinics.length > 1 && lastEditedClinicId) {
+    clinics.forEach((c) => {
+      c.expanded = c.id === lastEditedClinicId;
+      const card = container.querySelector(`[data-clinic-id="${c.id}"]`);
+      if (card) card.classList.toggle('expanded', c.expanded);
+    });
+  }
+
+  updateApplyClinicDropdown();
+}
+
+function onClinicInput(inputEl) {
+  const card = inputEl.closest('[data-clinic-card]');
+  const cid = card.getAttribute('data-clinic-id');
+  const field = inputEl.getAttribute('data-field');
+  const clinic = clinics.find((c) => c.id === cid);
+  if (clinic) {
+    clinic[field] = inputEl.value;
+    lastEditedClinicId = cid;
+  }
+  calc();
+}
+
+function addClinic() {
+  saveUndoSnapshot();
+  const newC = newClinicObj('מרפאה ' + (clinics.length + 1));
+  newC.expanded = true;
+  // Collapse others
+  clinics.forEach((c) => (c.expanded = false));
+  clinics.push(newC);
+  lastEditedClinicId = newC.id;
+  renderClinics();
+  calc();
+}
+
+function updateApplyClinicDropdown() {
+  const wrap = document.getElementById('applyClinicWrap');
+  const sel = document.getElementById('applyClinic');
+  if (!wrap || !sel) return;
+  if (clinics.length > 1) {
+    wrap.style.display = '';
+    sel.innerHTML = '';
+    clinics.forEach((c, i) => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name || 'מרפאה ' + (i + 1);
+      sel.appendChild(opt);
+    });
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+// ---- SHARED STRIP LOCK ----
+function maybeLockShared() {
+  const sharedHasValue =
+    document.getElementById('shaPotential').value !== '' ||
+    document.getElementById('avgShnati').value !== '';
+  const editBtn = document.getElementById('sharedEditBtn');
+  if (sharedHasValue && !sharedLocked) {
+    // not auto-locking visually until any clinic has data — keep simple
+  }
+  if (editBtn) editBtn.style.display = sharedLocked ? '' : 'none';
+  const strip = document.getElementById('sharedStrip');
+  if (strip) strip.classList.toggle('locked', sharedLocked);
+}
+function toggleSharedLock() {
+  sharedLocked = !sharedLocked;
+  maybeLockShared();
+  saveToStorage();
+}
+
+// ---- CORE CALC (per-clinic + combined) ----
+function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
+  const shaTeken = parseFloat(c.shaTeken) || 0;
+  const shaNosfot = parseFloat(c.shaNosfot) || 0;
+  const shaLaTipulit = parseFloat(c.shaLaTipulit) || 0;
+  const headrutMazaka = parseFloat(c.headrutMazaka) || 0;
+  const headrutLoMazaka = parseFloat(c.headrutLoMazaka) || 0;
+  const tifukot = parseFloat(c.tifukot) || 0;
+
   const shaAvoda = Math.max(
     0,
-    shaTeken - headrutMazaka - headrutLoMazaka_val - shaLaTipulit + shaNosfot,
+    shaTeken - headrutMazaka - headrutLoMazaka - shaLaTipulit + shaNosfot,
   );
-  // Update hidden field and display
-  document.getElementById('shaAvoda').value = shaAvoda;
-  document.getElementById('shaAvoda_display').textContent = shaAvoda.toFixed(2);
-  const tifukot = v('tifukot');
-  const avgShnati = v('avgShnati');
 
-  // Core calcs
   const tipulimMushkalim = tifukot * makdam;
   const mecane = shaAvoda;
   const rawAvg = mecane > 0 ? tipulimMushkalim / mecane : 0;
   const avgTipulim = Math.min(Math.max(rawAvg - 1, 0), 1);
-  const totalHoursLeTashlum = Math.max(
-    0,
-    shaTeken - headrutMazaka - headrutLoMazaka_val + shaNosfot,
-  );
+  const totalHoursLeTashlum = Math.max(0, shaTeken - headrutMazaka - headrutLoMazaka + shaNosfot);
 
-  // Threshold check: coded hours / total clocked hours >= 50%
-  // Threshold: coded hours / actual hours present (excluding absences entirely)
-  const actualHoursPresent = shaAvoda + shaLaTipulit; // עבודה + שלט (both = hours you were there)
+  // Per-clinic mishra% = (work + overtime + qualifying absence) / shared potential
+  const mishraHours = Math.max(0, shaTeken - headrutLoMazaka + shaNosfot);
+  const mishraPct = sharedPotential > 0 ? mishraHours / sharedPotential : 0;
+  const takaraClinic = mishraPct * fullCeiling;
+
+  // Coded-pct threshold (per clinic)
+  const actualHoursPresent = shaAvoda + shaLaTipulit;
   const codedPct = actualHoursPresent > 0 ? shaAvoda / actualHoursPresent : 0;
-  const belowThreshold = codedPct < 0.5;
-
-  // אחוז משרה בפועל
-  const mishraHours = Math.max(0, shaTeken - headrutLoMazaka_val + shaNosfot);
-  const mishraPct = shaPotential > 0 ? mishraHours / shaPotential : 0;
-  const takaraHodesh = mishraPct * takara;
-
-  // Gate: nothing pays if monthly avg <= 0 (rawAvg must exceed 1) OR below 50% threshold
+  const belowThreshold = actualHoursPresent > 0 ? codedPct < 0.5 : false;
   const belowAvgGate = avgTipulim <= 0;
   const noPayment = belowThreshold || belowAvgGate;
 
-  // פרמיית עבודה
   const premiatAvodaBefore = noPayment ? 0 : totalHoursLeTashlum * avgTipulim * tarif;
-  const premiatAvoda = Math.min(premiatAvodaBefore, takaraHodesh);
-
-  // פרמיית העדרות
+  const premiatAvoda = Math.min(premiatAvodaBefore, takaraClinic);
   const premiatHeadrutBefore = noPayment ? 0 : headrutMazaka * avgShnati * tarif;
-  const remainingCap = Math.max(0, takaraHodesh - premiatAvoda);
+  const remainingCap = Math.max(0, takaraClinic - premiatAvoda);
   const premiatHeadrut = Math.min(premiatHeadrutBefore, remainingCap);
 
-  const total = premiatAvoda + premiatHeadrut;
+  const totalClinic = premiatAvoda + premiatHeadrut;
+  const atCap =
+    premiatAvoda > 0 &&
+    Math.abs(premiatAvodaBefore - takaraClinic) < 0.5 &&
+    premiatAvoda >= takaraClinic - 0.5;
 
-  // To reach avg = 1 after subtracting 1, need raw avg = 2, so tipulim = mecane * 2
-  const tifukotNeeded = mecane > 0 ? Math.ceil((mecane * 2) / makdam) : 0;
-  const shortfall = Math.max(0, tifukotNeeded - tifukot);
+  // Pill: cap > warn > ok > neutral
+  let pill = 'neutral';
+  let pillLabel = '—';
+  const hasAnyInput =
+    shaTeken > 0 ||
+    shaNosfot > 0 ||
+    tifukot > 0 ||
+    headrutMazaka > 0 ||
+    headrutLoMazaka > 0 ||
+    shaLaTipulit > 0;
+  if (!hasAnyInput) {
+    pill = 'neutral';
+    pillLabel = '—';
+  } else if (belowThreshold) {
+    pill = 'warn';
+    pillLabel = '⚠️ סף לא הושג';
+  } else if (atCap) {
+    pill = 'cap';
+    pillLabel = '🔒 על תקרה';
+  } else if (belowAvgGate) {
+    pill = 'warn';
+    pillLabel = '⚠️ ממוצע נמוך';
+  } else {
+    pill = 'ok';
+    pillLabel = '✓ עבר';
+  }
 
-  // Update UI
-  set('r_tipulim', tipulimMushkalim.toFixed(0), 'טיפולים');
-  set('r_mecane', mecane.toFixed(2), 'שעות');
-  set('r_avg', avgTipulim.toFixed(3), avgTipulim >= 1 ? '(מקסימום ✓)' : '');
-  set('r_totalHours', totalHoursLeTashlum.toFixed(2), 'שעות');
-  set('r_mishra', (mishraPct * 100).toFixed(1), '%');
-  set('r_takara', '₪' + takaraHodesh.toFixed(2));
-  set('r_avoda', '₪' + premiatAvoda.toFixed(2));
-  set('r_headrut', '₪' + premiatHeadrut.toFixed(2));
-  // Show "before cap" only when cap reduced the amount
-  const avodaCapped = premiatAvodaBefore.toFixed(2) !== premiatAvoda.toFixed(2);
-  document.getElementById('row_avoda_before').style.display = avodaCapped ? '' : 'none';
-  if (avodaCapped) set('r_avoda_before', '₪' + premiatAvodaBefore.toFixed(2));
-  const headrutCapped = premiatHeadrutBefore.toFixed(2) !== premiatHeadrut.toFixed(2);
-  document.getElementById('row_headrut_before').style.display = headrutCapped ? '' : 'none';
-  if (headrutCapped) set('r_headrut_before', '₪' + premiatHeadrutBefore.toFixed(2));
-  document.getElementById('r_total').textContent = '₪' + total.toFixed(2);
+  return {
+    shaAvoda,
+    tipulimMushkalim,
+    mecane,
+    avgTipulim,
+    totalHoursLeTashlum,
+    mishraPct,
+    takaraClinic,
+    premiatAvoda,
+    premiatAvodaBefore,
+    premiatHeadrut,
+    premiatHeadrutBefore,
+    totalClinic,
+    pill,
+    pillLabel,
+    belowThreshold,
+    belowAvgGate,
+    atCap,
+    hasAnyInput,
+  };
+}
+
+function calc() {
+  const tarif = v('tarif');
+  const fullCeiling = v('takara');
+  const makdam = v('makdam');
+  const sharedPotential = v('shaPotential');
+  const avgShnati = v('avgShnati');
+
+  // Per-clinic
+  const results = clinics.map((c) =>
+    calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam),
+  );
+
+  // Combined
+  const totalPremium = results.reduce((s, r) => s + r.totalClinic, 0);
+  const totalCeiling = results.reduce((s, r) => s + r.takaraClinic, 0);
+  const totalMishraPct = results.reduce((s, r) => s + r.mishraPct, 0);
+  const totalTipulim = results.reduce((s, r) => s + r.tipulimMushkalim, 0);
+  const totalMecane = results.reduce((s, r) => s + r.mecane, 0);
+  const totalHoursLeTashlum = results.reduce((s, r) => s + r.totalHoursLeTashlum, 0);
+  const totalAvoda = results.reduce((s, r) => s + r.premiatAvoda, 0);
+  const totalAvodaBefore = results.reduce((s, r) => s + r.premiatAvodaBefore, 0);
+  const totalHeadrut = results.reduce((s, r) => s + r.premiatHeadrut, 0);
+  const totalHeadrutBefore = results.reduce((s, r) => s + r.premiatHeadrutBefore, 0);
+
+  const combinedAvg = totalMecane > 0 ? totalTipulim / totalMecane : 0;
+  const combinedAvgClamped = Math.min(Math.max(combinedAvg - 1, 0), 1);
+
+  // Anything-entered detection
+  const anyClinicHasInput = results.some((r) => r.hasAnyInput);
+  const emptyState = sharedPotential === 0 || !anyClinicHasInput;
+
+  // ---- Per-clinic UI updates ----
+  results.forEach((r, idx) => {
+    const c = clinics[idx];
+    const card = document.querySelector(`[data-clinic-card][data-clinic-id="${c.id}"]`);
+    if (!card) return;
+    const setReadout = (key, txt) => {
+      const el = card.querySelector(`[data-readout="${key}"]`);
+      if (el) el.textContent = txt;
+    };
+    setReadout('shaAvoda', r.shaAvoda.toFixed(2));
+    setReadout('mishraPct', (r.mishraPct * 100).toFixed(1) + '%');
+    setReadout('takaraClinic', fmtILS(r.takaraClinic));
+    setReadout('premiatAvoda', fmtILS(r.premiatAvoda));
+    setReadout('premiatHeadrut', fmtILS(r.premiatHeadrut));
+
+    const sum = card.querySelector('[data-clinic-sum]');
+    if (sum) sum.textContent = fmtILS(r.totalClinic);
+
+    const pill = card.querySelector('[data-clinic-pill]');
+    if (pill) {
+      pill.className = 'pill ' + r.pill;
+      pill.textContent = r.pillLabel;
+    }
+  });
+
+  // ---- Combined readouts ----
+  document.getElementById('r_total').textContent = fmtILS(totalPremium);
   document.getElementById('r_total_sub').textContent =
-    'סמל 1783: ₪' + premiatAvoda.toFixed(2) + ' | סמל 1785: ₪' + premiatHeadrut.toFixed(2);
+    'סמל 1783: ' + fmtILS(totalAvoda) + ' | סמל 1785: ' + fmtILS(totalHeadrut);
 
-  // Update sticky result
-  document.getElementById('r_total_sticky').textContent = '₪' + total.toFixed(2);
-  const stickyPctVal = takaraHodesh > 0 ? Math.min((total / takaraHodesh) * 100, 100) : 0;
+  document.getElementById('r_avoda').textContent = fmtILS(totalAvoda);
+  document.getElementById('r_headrut').textContent = fmtILS(totalHeadrut);
+
+  const avodaCapped = Math.abs(totalAvodaBefore - totalAvoda) > 0.005;
+  document.getElementById('row_avoda_before').style.display = avodaCapped ? '' : 'none';
+  if (avodaCapped) document.getElementById('r_avoda_before').textContent = fmtILS(totalAvodaBefore);
+  const headrutCapped = Math.abs(totalHeadrutBefore - totalHeadrut) > 0.005;
+  document.getElementById('row_headrut_before').style.display = headrutCapped ? '' : 'none';
+  if (headrutCapped)
+    document.getElementById('r_headrut_before').textContent = fmtILS(totalHeadrutBefore);
+
+  set('r_tipulim', totalTipulim.toFixed(0), 'טיפולים');
+  set('r_mecane', totalMecane.toFixed(2), 'שעות');
+  set('r_avg', combinedAvgClamped.toFixed(3), combinedAvgClamped >= 1 ? '(מקסימום ✓)' : '');
+  set('r_totalHours', totalHoursLeTashlum.toFixed(2), 'שעות');
+  set('r_mishra', (totalMishraPct * 100).toFixed(1), '%');
+  document.getElementById('r_takara').textContent = fmtILS(totalCeiling);
+
+  // ---- Per-clinic breakdown in drill-down ----
+  const perEl = document.getElementById('perClinicBreakdown');
+  if (perEl) {
+    if (clinics.length > 1) {
+      perEl.innerHTML = results
+        .map(
+          (r, i) =>
+            `<div class="result-row" style="border:none; background:none;">
+              <span class="rlabel">${escapeHtml(clinics[i].name || 'מרפאה ' + (i + 1))}</span>
+              <span class="rvalue">${fmtILS(r.totalClinic)}</span>
+            </div>`,
+        )
+        .join('');
+    } else {
+      perEl.innerHTML = '';
+    }
+  }
+
+  // ---- Sticky ----
+  document.getElementById('r_total_sticky').textContent = fmtILS(totalPremium);
+  const stickyPctVal = totalCeiling > 0 ? Math.min((totalPremium / totalCeiling) * 100, 100) : 0;
   const stickyColor =
     stickyPctVal >= 100
-      ? '#22c55e'
+      ? '#16a34a'
       : stickyPctVal >= 75
-        ? '#3b82f6'
+        ? '#2563eb'
         : stickyPctVal >= 40
-          ? '#fbbf24'
-          : '#ef4444';
+          ? '#d97706'
+          : '#dc2626';
   document.getElementById('stickyProgressBar').style.width = stickyPctVal + '%';
   document.getElementById('stickyProgressBar').style.background = stickyColor;
   document.getElementById('r_total_sticky').style.color = stickyColor;
   document.getElementById('stickyPct').textContent = stickyPctVal.toFixed(0) + '%';
-  document.getElementById('stickyTakara').textContent = 'תקרה: ₪' + takaraHodesh.toFixed(0);
-  // Update sticky ממוצע
-  const avgStickyEl = document.getElementById('r_avg_sticky');
-  avgStickyEl.textContent = avgTipulim.toFixed(3);
+  document.getElementById('stickyTakara').textContent =
+    'תקרה: ' + (totalCeiling > 0 ? fmtILS0(totalCeiling) : '—');
+  document.getElementById('r_avg_sticky').textContent = combinedAvgClamped.toFixed(3);
 
-  // ---- PROGRESS TOWARD תקרה ----
-  const gapToTakara = takaraHodesh - total;
-  const progressPct = takaraHodesh > 0 ? Math.min((total / takaraHodesh) * 100, 100) : 0;
-  const atOrOverCap = total >= takaraHodesh - 0.5;
+  // chips per-clinic in sticky (only when multi)
+  updateChips(results);
 
+  // month-over-month diff
+  updateMonthDiff(totalPremium);
+
+  // Progress bar block
+  const gapToTakara = totalCeiling - totalPremium;
+  const progressPct = totalCeiling > 0 ? Math.min((totalPremium / totalCeiling) * 100, 100) : 0;
+  const atOrOverCap = totalCeiling > 0 && totalPremium >= totalCeiling - 0.5;
   const progressColor =
     progressPct >= 100
-      ? '#22c55e'
+      ? '#16a34a'
       : progressPct >= 75
-        ? '#3b82f6'
+        ? '#2563eb'
         : progressPct >= 40
-          ? '#fbbf24'
-          : '#ef4444';
+          ? '#d97706'
+          : '#dc2626';
 
-  document.getElementById('takaraProgress').innerHTML = `
-    <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px;">
+  document.getElementById('takaraProgress').innerHTML =
+    totalCeiling > 0
+      ? `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
       <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-        <span style="font-size:12px; color:#94a3b8;">התקדמות לתקרה</span>
+        <span style="font-size:12px; color:var(--muted);">התקדמות לתקרה</span>
         <span style="font-size:12px; font-weight:700; color:${progressColor};">${progressPct.toFixed(1)}%</span>
       </div>
-      <div style="background:rgba(255,255,255,0.07); border-radius:99px; height:10px; overflow:hidden;">
+      <div style="background:var(--surface-3); border-radius:99px; height:10px; overflow:hidden;">
         <div style="width:${progressPct}%; height:100%; background:${progressColor}; border-radius:99px; transition:width 0.4s;"></div>
       </div>
       <div style="display:flex; justify-content:space-between; margin-top:7px;">
-        <span style="font-size:11px; color:#64748b;">פרמיה: ₪${total.toFixed(2)}</span>
-        <span style="font-size:11px; color:#64748b;">תקרה: ₪${takaraHodesh.toFixed(2)}</span>
+        <span style="font-size:11px; color:var(--muted);">פרמיה: ${fmtILS(totalPremium)}</span>
+        <span style="font-size:11px; color:var(--muted);">תקרה: ${fmtILS(totalCeiling)}</span>
       </div>
-      ${atOrOverCap ? '' : `<div style="margin-top:6px; font-size:12px; color:#fbbf24; text-align:center;">חסר: ₪${gapToTakara.toFixed(2)}</div>`}
-    </div>`;
+      ${atOrOverCap ? '' : `<div style="margin-top:6px; font-size:12px; color:#d97706; text-align:center;">חסר: ${fmtILS(gapToTakara)}</div>`}
+    </div>`
+      : '';
 
-  // ---- THRESHOLD + SUGGESTIONS ----
+  // ---- Alerts + suggestions ----
   const alertArea = document.getElementById('alertArea');
   const suggestArea = document.getElementById('suggestArea');
 
-  if (belowThreshold) {
-    alertArea.innerHTML = `<div class="alert danger">
-      <div class="atitle">⚠️ סף תפוקתי לא הושג</div>
-      <div class="abody">שעות תפוקתיות: ${(codedPct * 100).toFixed(1)}% משעות הנוכחות בפועל<br>נדרש לפחות 50% משעות הנוכחות (לא כולל היעדרויות) עם קוד ב-Clicks לקבלת פרמיה.</div>
-    </div>`;
-    suggestArea.innerHTML = '';
-  } else if (belowAvgGate) {
-    alertArea.innerHTML = `<div class="alert danger">
-      <div class="atitle">⚠️ שעות עבודה לא מספיק תפוקתיות</div>
-      <div class="abody">לפחות מחצית משעות העבודה שלך צריכות להיות תפוקתיות כדי לקבל פרמיה כלשהי — כולל פרמיית העדרות.</div>
-    </div>`;
-    suggestArea.innerHTML = '';
-  } else if (atOrOverCap) {
-    alertArea.innerHTML = `<div class="alert success">
-      <div class="atitle">🎉 הגעת לתקרה!</div>
-      <div class="abody">פרמיה מקסימלית לחודש זה הושגה.</div>
+  if (emptyState) {
+    alertArea.innerHTML = `<div class="alert neutral">
+      <div class="atitle">מלאי שדות כדי לראות תוצאה</div>
+      <div class="abody">הזיני שעות פוטנציאליות + שעות תקן + תפוקות לפחות במרפאה אחת.</div>
     </div>`;
     suggestArea.innerHTML = '';
   } else {
-    // Build suggestions
-    let suggestions = '';
-
-    // Option A: more תפוקות (only if avg < 1)
-    if (avgTipulim < 1) {
-      // How many more תפוקות needed to close the gap?
-      // gap = takaraHodesh - total = takaraHodesh - (totalHoursLeTashlum * avgTipulim * tarif) - premiatHeadrut
-      // We need: totalHoursLeTashlum * newAvg * tarif + premiatHeadrut >= takaraHodesh
-      // newAvg = (takaraHodesh - premiatHeadrut) / (totalHoursLeTashlum * tarif)
-      const neededAvg =
-        totalHoursLeTashlum > 0 && tarif > 0
-          ? (takaraHodesh - premiatHeadrutBefore) / (totalHoursLeTashlum * tarif)
-          : 0;
-      const cappedNeededAvg = Math.min(neededAvg, 1);
-      // rawAvg needed = neededAvg + 1
-      const neededRawAvg = cappedNeededAvg + 1;
-      const neededTipulim = Math.ceil(neededRawAvg * mecane);
-      const extraTifukot = Math.max(0, Math.ceil((neededTipulim - tipulimMushkalim) / makdam));
-
-      if (extraTifukot > 0) {
-        suggestions += `<div class="alert warning" style="margin-bottom:8px;">
-          <div class="atitle">📋 אפשרות א׳: עוד תפוקות</div>
-          <div class="abody">הוסיפי <strong>${extraTifukot} תפוקות</strong> נוספות ב-Clicks כדי לסגור פער של ₪${gapToTakara.toFixed(2)}<br>
-          <span style="font-size:11px; opacity:0.8;">כרגע: ${tifukot} תפוקות | נדרש: ${tifukot + extraTifukot}</span></div>
-        </div>`;
-      }
-    }
-
-    // --- OPTION B: convert עבודה hours to שלט ---
-    // Moving hours from עבודה to שלט:
-    // - מכנה shrinks → ממוצע rises (same תפוקות, fewer denominator hours)
-    // - סך שעות לתשלום stays SAME (total clocked hours unchanged)
-    // - Ceiling stays SAME (total clocked hours unchanged)
-    // Constraint: שלט ≤ שעות עבודה (50% rule)
-    const availableShalet = Math.max(0, shaAvoda); // shaAvoda already excludes שלט
-
-    if (availableShalet > 0.1 && avgTipulim < 1) {
-      // Find how much שלט needed to hit תקרה via numerical search
-      const targetPremium = Math.max(0, takaraHodesh - premiatHeadrutBefore);
-      let shaletNeeded = null;
-      for (let x = 0.5; x <= availableShalet + 0.5; x += 0.5) {
-        const newMecane = Math.max(mecane - x, 0.01);
-        const newAvg = Math.min(Math.max(tipulimMushkalim / newMecane - 1, 0), 1);
-        const newPremium = totalHoursLeTashlum * newAvg * tarif;
-        if (newPremium >= targetPremium) {
-          shaletNeeded = x;
-          break;
+    // pick the worst-status clinic for alert headline
+    const blocked = results.find((r) => r.hasAnyInput && r.belowThreshold);
+    const lowAvg = results.find((r) => r.hasAnyInput && r.belowAvgGate && !r.belowThreshold);
+    if (blocked) {
+      alertArea.innerHTML = `<div class="alert danger">
+        <div class="atitle">⚠️ סף תפוקתי לא הושג</div>
+        <div class="abody">לפחות מרפאה אחת מתחת לסף 50% של שעות נוכחות מקודדות ב-Clicks.</div>
+      </div>`;
+      suggestArea.innerHTML = '';
+    } else if (lowAvg) {
+      alertArea.innerHTML = `<div class="alert danger">
+        <div class="atitle">⚠️ שעות עבודה לא מספיק תפוקתיות</div>
+        <div class="abody">לפחות מחצית משעות העבודה צריכות להיות תפוקתיות כדי לקבל פרמיה כלשהי.</div>
+      </div>`;
+      suggestArea.innerHTML = '';
+    } else if (atOrOverCap) {
+      alertArea.innerHTML = `<div class="alert success">
+        <div class="atitle">🎉 הגעת לתקרה!</div>
+        <div class="abody">פרמיה מקסימלית לחודש זה הושגה.</div>
+      </div>`;
+      suggestArea.innerHTML = '';
+    } else {
+      // suggestions — pick the clinic with most room to improve (largest gap to its ceiling)
+      let bestClinicIdx = -1;
+      let bestGap = 0;
+      results.forEach((r, i) => {
+        if (!r.hasAnyInput) return;
+        const gap = r.takaraClinic - r.totalClinic;
+        if (gap > bestGap) {
+          bestGap = gap;
+          bestClinicIdx = i;
+        }
+      });
+      let suggestions = '';
+      if (bestClinicIdx >= 0) {
+        const r = results[bestClinicIdx];
+        const c = clinics[bestClinicIdx];
+        const clinicName = c.name || 'מרפאה ' + (bestClinicIdx + 1);
+        const tifukot = parseFloat(c.tifukot) || 0;
+        if (r.avgTipulim < 1) {
+          const neededAvg =
+            r.totalHoursLeTashlum > 0 && tarif > 0
+              ? (r.takaraClinic - r.premiatHeadrutBefore) / (r.totalHoursLeTashlum * tarif)
+              : 0;
+          const cappedNeededAvg = Math.min(neededAvg, 1);
+          const neededRawAvg = cappedNeededAvg + 1;
+          const neededTipulim = Math.ceil(neededRawAvg * r.mecane);
+          const extraTifukot = Math.max(
+            0,
+            Math.ceil((neededTipulim - r.tipulimMushkalim) / makdam),
+          );
+          if (extraTifukot > 0) {
+            suggestions += `<div class="alert warning" style="margin-bottom:8px;">
+              <div class="atitle">📋 אפשרות א׳: עוד תפוקות ב${escapeHtml(clinicName)}</div>
+              <div class="abody">הוסיפי <strong>${extraTifukot} תפוקות</strong> נוספות ב-Clicks כדי לסגור פער של ${fmtILS(r.takaraClinic - r.totalClinic)}<br>
+              <span style="font-size:11px; opacity:0.8;">כרגע: ${tifukot} תפוקות | נדרש: ${tifukot + extraTifukot}</span></div>
+            </div>`;
+          }
+        }
+        const shaLaTipulit = parseFloat(c.shaLaTipulit) || 0;
+        const availableShalet = Math.max(0, r.shaAvoda);
+        if (availableShalet > 0.1 && r.avgTipulim < 1) {
+          const targetPremium = Math.max(0, r.takaraClinic - r.premiatHeadrutBefore);
+          let shaletNeeded = null;
+          for (let x = 0.5; x <= availableShalet + 0.5; x += 0.5) {
+            const newMecane = Math.max(r.mecane - x, 0.01);
+            const newAvg = Math.min(Math.max(r.tipulimMushkalim / newMecane - 1, 0), 1);
+            const newPremium = r.totalHoursLeTashlum * newAvg * tarif;
+            if (newPremium >= targetPremium) {
+              shaletNeeded = x;
+              break;
+            }
+          }
+          if (shaletNeeded !== null) {
+            suggestions += `<div class="alert warning">
+              <div class="atitle">🕐 אפשרות ב׳: העבר שעות לשלט ב${escapeHtml(clinicName)}
+                <button class="tip-btn" data-tip="shalet" style="font-size:9px; width:15px; height:15px; margin-right:6px;">?</button>
+              </div>
+              <div class="abody">העבירי <strong>${shaletNeeded.toFixed(1)} שעות</strong> משעות עבודה לשלט<br>
+              <span style="font-size:11px; opacity:0.8;">שלט: ${shaLaTipulit} → ${(shaLaTipulit + shaletNeeded).toFixed(1)} | מקסימום: ${r.shaAvoda.toFixed(1)}</span></div>
+            </div>`;
+          }
         }
       }
-
-      if (shaletNeeded !== null) {
-        suggestions += `<div class="alert warning">
-          <div class="atitle">🕐 אפשרות ב׳: העבר שעות לשלט
-            <button class="tip-btn" data-tip="shalet" style="font-size:9px; width:15px; height:15px; margin-right:6px;">?</button>
-          </div>
-          <div class="abody">העבירי <strong>${shaletNeeded.toFixed(1)} שעות</strong> משעות עבודה לשלט<br>
-          <span style="font-size:11px; opacity:0.8;">שלט: ${shaLaTipulit} → ${(shaLaTipulit + shaletNeeded).toFixed(1)} | מקסימום אפשרי: ${shaAvoda.toFixed(1)}</span></div>
-        </div>`;
-      } else {
-        suggestions += `<div class="alert warning">
-          <div class="atitle">🕐 אפשרות ב׳: העבר שעות לשלט
-            <button class="tip-btn" data-tip="shalet" style="font-size:9px; width:15px; height:15px; margin-right:6px;">?</button>
-          </div>
-          <div class="abody">העבירי את כל <strong>${availableShalet.toFixed(1)} שעות</strong> הזמינות לשלט — יקרב לתקרה אך לא יספיק לבד<br>
-          <span style="font-size:11px; opacity:0.8;">שלט: ${shaLaTipulit} → ${(shaLaTipulit + availableShalet).toFixed(1)} | מקסימום: ${shaAvoda.toFixed(1)}</span></div>
+      if (!suggestions) {
+        suggestions = `<div class="alert warning">
+          <div class="atitle">💡 ממוצע מקסימלי — צריך עוד שעות</div>
+          <div class="abody">הממוצע כבר 1.0 ואין שלט נוסף זמין. כדי להגיע לתקרה — צריך עוד שעות עבודה בחודש זה.</div>
         </div>`;
       }
+      alertArea.innerHTML = '';
+      suggestArea.innerHTML =
+        `<div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">💡 הצעות להגדלת הפרמיה</div>` +
+        suggestions;
     }
-
-    if (!suggestions) {
-      suggestions = `<div class="alert warning">
-        <div class="atitle">💡 ממוצע מקסימלי — צריך עוד שעות</div>
-        <div class="abody">הממוצע כבר 1.0 ואין שלט נוסף זמין. כדי להגיע לתקרה — צריך עוד שעות עבודה בחודש זה.</div>
-      </div>`;
-    }
-
-    alertArea.innerHTML = '';
-    suggestArea.innerHTML =
-      `<div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">💡 הצעות להגדלת הפרמיה</div>` +
-      suggestions;
   }
 
-  // Auto-save inputs to localStorage
+  // Auto-open the פירוט drill-down when result exists, only first time
+  maybeAutoOpenDetail(totalPremium > 0 && anyClinicHasInput);
+
   saveToStorage();
 }
 
-function setVetek(isVetek) {
+function escapeHtml(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    (m) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[m],
+  );
+}
+
+let detailAutoOpened = false;
+function maybeAutoOpenDetail(shouldOpen) {
+  if (!shouldOpen || detailAutoOpened) return;
+  const el = document.getElementById('detailPremia');
+  const arrow = document.getElementById('arrow_detailPremia');
+  if (el && el.style.display === 'none') {
+    el.style.display = '';
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }
+  detailAutoOpened = true;
+}
+
+function updateChips(results) {
+  const chipsEl = document.getElementById('clinicChips');
+  if (!chipsEl) return;
+  if (!results || clinics.length <= 1) {
+    chipsEl.innerHTML = '';
+    return;
+  }
+  chipsEl.innerHTML = results
+    .map(
+      (r, i) =>
+        `<span class="chip">${escapeHtml(clinics[i].name || 'מרפאה ' + (i + 1))}: ${fmtILS0(r.totalClinic)}</span>`,
+    )
+    .join('');
+}
+
+function updateMonthDiff(currentTotal) {
+  const el = document.getElementById('monthDiff');
+  if (!el) return;
+  try {
+    const lastRaw = localStorage.getItem('premiot_last_month_total');
+    if (lastRaw && currentTotal > 0) {
+      const last = parseFloat(lastRaw);
+      if (isFinite(last) && Math.abs(last - currentTotal) > 0.5) {
+        const diff = currentTotal - last;
+        const sign = diff >= 0 ? '+' : '−';
+        const cls = diff >= 0 ? 'up' : 'down';
+        el.className = 'month-diff ' + cls;
+        el.textContent = `מול חודש קודם: ${sign}${fmtILS(Math.abs(diff))}`;
+      } else {
+        el.textContent = '';
+      }
+    } else {
+      el.textContent = '';
+    }
+    if (currentTotal > 0) {
+      localStorage.setItem('premiot_last_month_total', String(currentTotal));
+    }
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function setVetek(isVetek, skipCalc) {
   document.getElementById('takara').value = isVetek ? 5838.25 : 5400;
-  document.getElementById('btn-regular').style.background = isVetek
-    ? 'rgba(255,255,255,0.05)'
-    : 'rgba(37,99,235,0.8)';
-  document.getElementById('btn-regular').style.border = isVetek
-    ? '2px solid rgba(255,255,255,0.1)'
-    : '2px solid #3b82f6';
-  document.getElementById('btn-regular').style.color = isVetek ? '#94a3b8' : '#fff';
-  document.getElementById('btn-vetek').style.background = isVetek
-    ? 'rgba(37,99,235,0.8)'
-    : 'rgba(255,255,255,0.05)';
-  document.getElementById('btn-vetek').style.border = isVetek
-    ? '2px solid #3b82f6'
-    : '2px solid rgba(255,255,255,0.1)';
-  document.getElementById('btn-vetek').style.color = isVetek ? '#fff' : '#94a3b8';
-  calc();
+  const reg = document.getElementById('btn-regular');
+  const vet = document.getElementById('btn-vetek');
+  if (reg && vet) {
+    if (isVetek) {
+      reg.style.background = 'var(--surface)';
+      reg.style.color = 'var(--muted)';
+      reg.style.borderColor = 'var(--border-strong)';
+      vet.style.background = '#2563eb';
+      vet.style.color = '#fff';
+      vet.style.borderColor = '#2563eb';
+    } else {
+      reg.style.background = '#2563eb';
+      reg.style.color = '#fff';
+      reg.style.borderColor = '#2563eb';
+      vet.style.background = 'var(--surface)';
+      vet.style.color = 'var(--muted)';
+      vet.style.borderColor = 'var(--border-strong)';
+    }
+  }
+  if (!skipCalc) calc();
 }
 
 function resetFields() {
   saveUndoSnapshot();
-  [
-    'shaPotential',
-    'shaTeken',
-    'shaNosfot',
-    'shaLaTipulit',
-    'headrutMazaka',
-    'headrutLoMazaka',
-    'tifukot',
-    'avgShnati',
-  ].forEach((id) => {
-    document.getElementById(id).value = '';
-  });
+  document.getElementById('shaPotential').value = '';
+  document.getElementById('avgShnati').value = '';
+  clinics = [newClinicObj('מרפאה 1')];
+  lastEditedClinicId = clinics[0].id;
+  detailAutoOpened = false;
   try {
-    localStorage.removeItem('premiot_data');
-  } catch (e) {}
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('premiot_last_month_total');
+  } catch (e) {
+    /* ignore */
+  }
+  renderClinics();
   calc();
 }
 
+// ---- EXPORTS (PDF + Excel) ----
 function getSummaryData() {
-  const val = (id) => document.getElementById(id)?.value || '0';
-  const get = (id) => document.getElementById(id)?.textContent?.trim() || '—';
-  const isVetek = parseFloat(val('takara')) === 5838.25;
+  const tarif = v('tarif');
+  const fullCeiling = v('takara');
+  const makdam = v('makdam');
+  const sharedPotential = v('shaPotential');
+  const avgShnati = v('avgShnati');
+  const isVetek = fullCeiling === 5838.25;
   const selectedMonth = document.getElementById('selectedMonth')?.value || '';
+  const results = clinics.map((c) =>
+    calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam),
+  );
   return {
     month: selectedMonth,
     isVetek,
-    shaPotential: val('shaPotential'),
-    shaTeken: val('shaTeken'),
-    shaLaTipulit: val('shaLaTipulit') || '0',
-    shaNosfot: val('shaNosfot') || '0',
-    shaAvoda: get('shaAvoda_display'),
-    headrutMazaka: val('headrutMazaka') || '0',
-    headrutLoMazaka: val('headrutLoMazaka') || '0',
-    tifukot: val('tifukot') || '0',
-    avgShnati: val('avgShnati') || '0',
-    r_mishra: get('r_mishra'),
-    r_takara: get('r_takara'),
-    r_avg: get('r_avg'),
-    r_tipulim: get('r_tipulim'),
-    r_totalHours: get('r_totalHours'),
-    r_avoda_before: get('r_avoda_before'),
-    r_avoda: get('r_avoda'),
-    r_headrut_before: get('r_headrut_before'),
-    r_headrut: get('r_headrut'),
-    r_total: document.getElementById('r_total')?.textContent?.trim() || '—',
+    sharedPotential,
+    avgShnati,
+    clinics: clinics.map((c, i) => ({ ...c, ...results[i] })),
+    totalPremium: results.reduce((s, r) => s + r.totalClinic, 0),
+    totalAvoda: results.reduce((s, r) => s + r.premiatAvoda, 0),
+    totalHeadrut: results.reduce((s, r) => s + r.premiatHeadrut, 0),
+    totalCeiling: results.reduce((s, r) => s + r.takaraClinic, 0),
   };
 }
 
 function downloadPDF() {
   const d = getSummaryData();
+  const clinicSections = d.clinics
+    .map(
+      (c) => `
+    <h3 style="margin-top:14px;">${escapeHtml(c.name)}</h3>
+    <table>
+      <tr><td>שעות תקן</td><td>${c.shaTeken || 0}</td></tr>
+      <tr><td>שעות עודפות</td><td>${c.shaNosfot || 0}</td></tr>
+      <tr><td>שעות שלט</td><td>${c.shaLaTipulit || 0}</td></tr>
+      <tr><td>היעדרות מזכה</td><td>${c.headrutMazaka || 0}</td></tr>
+      <tr><td>היעדרות לא מזכה</td><td>${c.headrutLoMazaka || 0}</td></tr>
+      <tr><td>תפוקות</td><td>${c.tifukot || 0}</td></tr>
+      <tr class="accent"><td>שעות עבודה (מחושב)</td><td>${c.shaAvoda.toFixed(2)}</td></tr>
+      <tr><td>אחוז משרה במרפאה</td><td>${(c.mishraPct * 100).toFixed(1)}%</td></tr>
+      <tr><td>תקרה במרפאה</td><td>${fmtILS(c.takaraClinic)}</td></tr>
+      <tr><td>פרמיית עבודה</td><td>${fmtILS(c.premiatAvoda)}</td></tr>
+      <tr><td>פרמיית העדרות</td><td>${fmtILS(c.premiatHeadrut)}</td></tr>
+      <tr class="accent"><td>סך פרמיה במרפאה</td><td>${fmtILS(c.totalClinic)}</td></tr>
+    </table>`,
+    )
+    .join('');
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -600,54 +1016,34 @@ function downloadPDF() {
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   body { font-family: Arial, sans-serif; direction: rtl; padding: 0; color: #1e293b; max-width: 600px; margin: 0 auto; }
   h1 { font-size: 20px; margin-bottom: 2px; }
+  h3 { font-size: 14px; margin-bottom: 4px; color: #2563eb; }
   .sub { font-size: 11px; color: #64748b; margin-bottom: 16px; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  th { background: #1e3a5f; color: white; padding: 6px 10px; font-size: 12px; text-align: right; }
+  th { background: #2563eb; color: white; padding: 6px 10px; font-size: 12px; text-align: right; }
   td { padding: 5px 10px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; }
   tr:nth-child(even) td { background: #f8fafc; }
   .accent td { background: #dbeafe !important; font-weight: 700; }
-  .total td { background: #1e3a5f !important; color: white; font-size: 15px; font-weight: 800; padding: 10px; }
-  .warning { font-size: 10px; color: #94a3b8; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+  .total td { background: #2563eb !important; color: white; font-size: 15px; font-weight: 800; padding: 10px; }
+  .warning { font-size: 10px; color: #64748b; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 8px; }
 </style>
 </head>
 <body>
 <h1>מחשבון פרמיות — ${d.month}</h1>
 <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים | סוג עובדת: ${d.isVetek ? 'ותיקה' : 'רגילה'}</div>
 <table>
-  <tr><th colspan="2">שעות עבודה</th></tr>
-  <tr><td>שעות פוטנציאליות</td><td>${d.shaPotential}</td></tr>
-  <tr><td>שעות תקן</td><td>${d.shaTeken}</td></tr>
-  <tr><td>שעות שלט</td><td>${d.shaLaTipulit}</td></tr>
-  <tr><td>שעות עודפות</td><td>${d.shaNosfot}</td></tr>
-  <tr class="accent"><td>שעות עבודה (מחושב)</td><td>${d.shaAvoda}</td></tr>
-</table>
-<table>
-  <tr><th colspan="2">היעדרויות</th></tr>
-  <tr><td>היעדרות מזכה</td><td>${d.headrutMazaka} שעות</td></tr>
-  <tr><td>היעדרות לא מזכה (מחלה)</td><td>${d.headrutLoMazaka} שעות</td></tr>
-</table>
-<table>
-  <tr><th colspan="2">תפוקות</th></tr>
-  <tr><td>כמות תפוקות</td><td>${d.tifukot}</td></tr>
+  <tr><th colspan="2">משותף</th></tr>
+  <tr><td>שעות פוטנציאליות</td><td>${d.sharedPotential}</td></tr>
   <tr><td>ממוצע שנתי (12 חודשים)</td><td>${d.avgShnati}</td></tr>
-  <tr><td>טיפולים משוקללים</td><td>${d.r_tipulim}</td></tr>
-  <tr class="accent"><td>ממוצע טיפולים לתשלום</td><td>${d.r_avg}</td></tr>
-  <tr><td>סך שעות לתשלום</td><td>${d.r_totalHours}</td></tr>
 </table>
+${clinicSections}
 <table>
-  <tr><th colspan="2">משרה ותקרה</th></tr>
-  <tr><td>אחוז משרה בפועל</td><td>${d.r_mishra}</td></tr>
-  <tr class="accent"><td>תקרת תשלום חודשית</td><td>${d.r_takara}</td></tr>
+  <tr><th colspan="2">סיכום כולל</th></tr>
+  <tr><td>תקרה כוללת</td><td>${fmtILS(d.totalCeiling)}</td></tr>
+  <tr><td>פרמיית עבודה — סמל 1783</td><td>${fmtILS(d.totalAvoda)}</td></tr>
+  <tr><td>פרמיית העדרות — סמל 1785</td><td>${fmtILS(d.totalHeadrut)}</td></tr>
+  <tr class="total"><td>סך פרמיה</td><td>${fmtILS(d.totalPremium)}</td></tr>
 </table>
-<table>
-  <tr><th colspan="2">פרמיות</th></tr>
-  <tr><td>פרמיית עבודה לפני תקרה</td><td>${d.r_avoda_before}</td></tr>
-  <tr class="accent"><td>פרמיית עבודה — סמל 1783</td><td>${d.r_avoda}</td></tr>
-  <tr><td>פרמיית העדרות לפני תקרה</td><td>${d.r_headrut_before}</td></tr>
-  <tr class="accent"><td>פרמיית העדרות — סמל 1785</td><td>${d.r_headrut}</td></tr>
-  <tr class="total"><td>סך פרמיה</td><td>${d.r_total}</td></tr>
-</table>
-<div class="warning">כלי עזר בלבד — נבנה על ידי אליסון אלט. עשוי להיות מכוייל עד ~30 ש״ח מהתלוש הרשמי.</div>
+<div class="warning">מחשבון לא רשמי — תמיד צלבני מול התלוש.</div>
 </body></html>`;
   const win = window.open('', '_blank');
   if (!win) {
@@ -666,88 +1062,83 @@ function downloadExcel() {
   const d = getSummaryData();
   const rows = [
     ['מחשבון פרמיות — ' + d.month, ''],
-    ['כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים', ''],
     ['סוג עובדת', d.isVetek ? 'ותיקה' : 'רגילה'],
+    ['שעות פוטנציאליות', d.sharedPotential],
+    ['ממוצע שנתי', d.avgShnati],
     ['', ''],
-    ['שעות עבודה', ''],
-    ['שעות פוטנציאליות', d.shaPotential],
-    ['שעות תקן', d.shaTeken],
-    ['שעות שלט', d.shaLaTipulit],
-    ['שעות עודפות', d.shaNosfot],
-    ['שעות עבודה (מחושב)', d.shaAvoda],
-    ['', ''],
-    ['היעדרויות', ''],
-    ['היעדרות מזכה (שעות)', d.headrutMazaka],
-    ['היעדרות לא מזכה - מחלה (שעות)', d.headrutLoMazaka],
-    ['', ''],
-    ['תפוקות', ''],
-    ['כמות תפוקות', d.tifukot],
-    ['ממוצע שנתי (12 חודשים)', d.avgShnati],
-    ['טיפולים משוקללים', d.r_tipulim],
-    ['ממוצע טיפולים לתשלום', d.r_avg],
-    ['סך שעות לתשלום', d.r_totalHours],
-    ['', ''],
-    ['משרה ותקרה', ''],
-    ['אחוז משרה בפועל', d.r_mishra],
-    ['תקרת תשלום חודשית', d.r_takara],
-    ['', ''],
-    ['פרמיות', ''],
-    ['פרמיית עבודה לפני תקרה', d.r_avoda_before],
-    ['פרמיית עבודה סמל 1783', d.r_avoda],
-    ['פרמיית העדרות לפני תקרה', d.r_headrut_before],
-    ['פרמיית העדרות סמל 1785', d.r_headrut],
-    ['סך פרמיה', d.r_total],
-    ['', ''],
-    ['הערה', 'כלי עזר בלבד — עשוי להיות מכוייל עד ~₪30 מהתלוש הרשמי'],
   ];
+  d.clinics.forEach((c) => {
+    rows.push([c.name, '']);
+    rows.push(['שעות תקן', c.shaTeken || 0]);
+    rows.push(['שעות עודפות', c.shaNosfot || 0]);
+    rows.push(['שעות שלט', c.shaLaTipulit || 0]);
+    rows.push(['היעדרות מזכה', c.headrutMazaka || 0]);
+    rows.push(['היעדרות לא מזכה', c.headrutLoMazaka || 0]);
+    rows.push(['תפוקות', c.tifukot || 0]);
+    rows.push(['שעות עבודה (מחושב)', c.shaAvoda.toFixed(2)]);
+    rows.push(['אחוז משרה במרפאה', (c.mishraPct * 100).toFixed(1) + '%']);
+    rows.push(['תקרה במרפאה', c.takaraClinic.toFixed(2)]);
+    rows.push(['פרמיית עבודה', c.premiatAvoda.toFixed(2)]);
+    rows.push(['פרמיית העדרות', c.premiatHeadrut.toFixed(2)]);
+    rows.push(['סך פרמיה במרפאה', c.totalClinic.toFixed(2)]);
+    rows.push(['', '']);
+  });
+  rows.push(['סיכום כולל', '']);
+  rows.push(['תקרה כוללת', d.totalCeiling.toFixed(2)]);
+  rows.push(['פרמיית עבודה (סמל 1783)', d.totalAvoda.toFixed(2)]);
+  rows.push(['פרמיית העדרות (סמל 1785)', d.totalHeadrut.toFixed(2)]);
+  rows.push(['סך פרמיה', d.totalPremium.toFixed(2)]);
+  rows.push(['', '']);
+  rows.push(['הערה', 'מחשבון לא רשמי — תמיד צלבני מול התלוש']);
+
   const csv =
-    '\uFEFF' +
+    '﻿' +
     rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'פרמיה_' + d.month.replace(' ', '_') + '.csv';
+  a.download = 'פרמיה_' + (d.month || 'חודש').replace(' ', '_') + '.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
-// ---- COLLAPSIBLE SECTIONS ----
+// ---- COLLAPSIBLES ----
 function toggleSection(id) {
   const el = document.getElementById(id);
   const arrow = document.getElementById('arrow_' + id);
-  if (el.style.display === 'none') {
-    el.style.display = '';
-    arrow.style.transform = 'rotate(180deg)';
+  if (!el) return;
+  if (el.style.display === 'none' || el.style.display === '') {
+    el.style.display = el.style.display === 'none' ? '' : 'none';
+    // explicit handling
+    if (el.style.display === '') {
+      if (arrow) arrow.style.transform = 'rotate(180deg)';
+    } else {
+      if (arrow) arrow.style.transform = '';
+    }
   } else {
     el.style.display = 'none';
-    arrow.style.transform = '';
+    if (arrow) arrow.style.transform = '';
   }
 }
 
-// ---- TAB SWITCHING ----
+// ---- TABS ----
 function switchTab(tab) {
   document.getElementById('panel-calc').style.display = tab === 'calc' ? '' : 'none';
   document.getElementById('panel-hours').style.display = tab === 'hours' ? '' : 'none';
-  document.getElementById('tab-calc').style.background =
-    tab === 'calc' ? 'rgba(37,99,235,0.7)' : 'transparent';
+  document.getElementById('tab-calc').style.background = tab === 'calc' ? '#2563eb' : 'transparent';
   document.getElementById('tab-calc').style.color = tab === 'calc' ? '#fff' : '#64748b';
   document.getElementById('tab-hours').style.background =
-    tab === 'hours' ? 'rgba(37,99,235,0.7)' : 'transparent';
+    tab === 'hours' ? '#2563eb' : 'transparent';
   document.getElementById('tab-hours').style.color = tab === 'hours' ? '#fff' : '#64748b';
   if (tab === 'hours') calcHours();
 }
 
-// ---- ISRAELI HOLIDAY CALENDAR 2026-2027 ----
-// Types: 'chag' (no work), 'erev' (4hr/half), 'cholhamoed' (5hr/62.5%), 'yomAtzmaut' (no work), 'mekutzar' (full 8hr for potential)
-// In Israel: 1 day yom tov (not 2 like diaspora)
+// ---- HEBREW HOLIDAY CALENDAR 2026-2027 ----
 const HOLIDAYS = {
-  // === 2026 ===
-  // Purim — Mar 3 (Tue) — yom mekutzar (counts as 8hr for potential)
   '2026-03-03': { type: 'mekutzar', name: 'פורים' },
-  // Pesach
   '2026-04-01': { type: 'erev', name: 'ערב פסח' },
   '2026-04-02': { type: 'chag', name: 'פסח א׳' },
   '2026-04-03': { type: 'cholhamoed', name: 'חול המועד פסח' },
@@ -756,22 +1147,15 @@ const HOLIDAYS = {
   '2026-04-06': { type: 'cholhamoed', name: 'חול המועד פסח' },
   '2026-04-07': { type: 'cholhamoed', name: 'חול המועד פסח (ערב שביעי של פסח)' },
   '2026-04-08': { type: 'chag', name: 'שביעי של פסח' },
-  // Yom HaShoah — Apr 14 (Tue) — not a day off at Clalit
-  // Yom HaZikaron — Apr 21 (Tue) — half day at Clalit
   '2026-04-21': { type: 'erev', name: 'יום הזיכרון' },
-  // Yom HaAtzmaut — Apr 22 (Wed)
   '2026-04-22': { type: 'yomAtzmaut', name: 'יום העצמאות' },
-  // Shavuot
   '2026-05-21': { type: 'erev', name: 'ערב שבועות' },
   '2026-05-22': { type: 'chag', name: 'שבועות' },
-  // Rosh Hashana
   '2026-09-11': { type: 'erev', name: 'ערב ראש השנה' },
   '2026-09-12': { type: 'chag', name: 'ראש השנה א׳' },
   '2026-09-13': { type: 'chag', name: 'ראש השנה ב׳' },
-  // Yom Kippur
   '2026-09-20': { type: 'erev', name: 'ערב יום כיפור' },
   '2026-09-21': { type: 'chag', name: 'יום כיפור' },
-  // Sukkot
   '2026-09-25': { type: 'erev', name: 'ערב סוכות' },
   '2026-09-26': { type: 'chag', name: 'סוכות א׳' },
   '2026-09-27': { type: 'cholhamoed', name: 'חול המועד סוכות' },
@@ -781,7 +1165,6 @@ const HOLIDAYS = {
   '2026-10-01': { type: 'cholhamoed', name: 'חול המועד סוכות' },
   '2026-10-02': { type: 'cholhamoed', name: 'הושענא רבה (חול המועד סוכות)' },
   '2026-10-03': { type: 'chag', name: 'שמיני עצרת / שמחת תורה' },
-  // Chanukah — Dec 5-12 — yom mekutzar (full 8hr for potential)
   '2026-12-05': { type: 'mekutzar', name: 'חנוכה' },
   '2026-12-06': { type: 'mekutzar', name: 'חנוכה' },
   '2026-12-07': { type: 'mekutzar', name: 'חנוכה' },
@@ -790,11 +1173,7 @@ const HOLIDAYS = {
   '2026-12-10': { type: 'mekutzar', name: 'חנוכה' },
   '2026-12-11': { type: 'mekutzar', name: 'חנוכה' },
   '2026-12-12': { type: 'mekutzar', name: 'חנוכה' },
-
-  // === 2027 ===
-  // Purim — Mar 23 (Tue)
   '2027-03-23': { type: 'mekutzar', name: 'פורים' },
-  // Pesach
   '2027-04-21': { type: 'erev', name: 'ערב פסח' },
   '2027-04-22': { type: 'chag', name: 'פסח א׳' },
   '2027-04-23': { type: 'cholhamoed', name: 'חול המועד פסח' },
@@ -803,21 +1182,15 @@ const HOLIDAYS = {
   '2027-04-26': { type: 'cholhamoed', name: 'חול המועד פסח' },
   '2027-04-27': { type: 'cholhamoed', name: 'חול המועד פסח (ערב שביעי של פסח)' },
   '2027-04-28': { type: 'chag', name: 'שביעי של פסח' },
-  // Yom HaZikaron — May 11 (Tue) — half day at Clalit
   '2027-05-11': { type: 'erev', name: 'יום הזיכרון' },
-  // Yom HaAtzmaut — May 12 (Wed)
   '2027-05-12': { type: 'yomAtzmaut', name: 'יום העצמאות' },
-  // Shavuot
   '2027-06-10': { type: 'erev', name: 'ערב שבועות' },
   '2027-06-11': { type: 'chag', name: 'שבועות' },
-  // Rosh Hashana
   '2027-10-01': { type: 'erev', name: 'ערב ראש השנה' },
   '2027-10-02': { type: 'chag', name: 'ראש השנה א׳' },
   '2027-10-03': { type: 'chag', name: 'ראש השנה ב׳' },
-  // Yom Kippur
   '2027-10-10': { type: 'erev', name: 'ערב יום כיפור' },
   '2027-10-11': { type: 'chag', name: 'יום כיפור' },
-  // Sukkot
   '2027-10-15': { type: 'erev', name: 'ערב סוכות' },
   '2027-10-16': { type: 'chag', name: 'סוכות א׳' },
   '2027-10-17': { type: 'cholhamoed', name: 'חול המועד סוכות' },
@@ -827,7 +1200,6 @@ const HOLIDAYS = {
   '2027-10-21': { type: 'cholhamoed', name: 'חול המועד סוכות' },
   '2027-10-22': { type: 'cholhamoed', name: 'הושענא רבה (חול המועד סוכות)' },
   '2027-10-23': { type: 'chag', name: 'שמיני עצרת / שמחת תורה' },
-  // Chanukah — Dec 25 - Jan 1
   '2027-12-25': { type: 'mekutzar', name: 'חנוכה' },
   '2027-12-26': { type: 'mekutzar', name: 'חנוכה' },
   '2027-12-27': { type: 'mekutzar', name: 'חנוכה' },
@@ -838,7 +1210,6 @@ const HOLIDAYS = {
 };
 
 const DAY_NAMES_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
-const FULL_DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
 // Build hours month selector (Jan 2026 - Dec 2027)
 (function () {
@@ -869,9 +1240,7 @@ const FULL_DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'ח�
   }
 })();
 
-// Build day input checkboxes (Sun=0 through Fri=5)
-// Friday hours add to teken (numerator) but NOT to potential (denominator).
-// Result: %משרה can exceed 100% for OTs whose regular contract includes Friday.
+// Day input checkboxes
 (function () {
   const container = document.getElementById('dayInputs');
   const days = [
@@ -887,28 +1256,21 @@ const FULL_DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'ח�
     row.className = 'input-row';
     row.innerHTML = `
       <label style="display:flex; align-items:center; gap:8px;">
-        <input type="checkbox" id="chk_${d.id}" onchange="calcHours()" style="width:18px; height:18px; accent-color:#3b82f6;">
-        <span style="font-size:13px; color:#cbd5e1;">${d.name}</span>
+        <input type="checkbox" id="chk_${d.id}" onchange="calcHours()" style="width:18px; height:18px; accent-color:#2563eb;">
+        <span style="font-size:13px; color:var(--text);">${d.name}</span>
       </label>
       <span class="unit">שעות</span>
-      <input type="number" inputmode="decimal" id="hrs_${d.id}" value="" placeholder="0" step="0.5" oninput="calcHours()" style="
-        width:70px; padding:5px 7px; border-radius:6px;
-        border:1px solid rgba(255,255,255,0.12);
-        background:rgba(255,255,255,0.08);
-        color:#f1f5f9; font-size:14px; font-weight:600;
-        text-align:center; outline:none; font-family:monospace;
-      ">
+      <input type="number" inputmode="decimal" id="hrs_${d.id}" value="" placeholder="0" step="0.5" lang="en" autocomplete="off" oninput="calcHours()">
     `;
     container.appendChild(row);
   });
 })();
 
 function calcHours() {
-  const monthVal = document.getElementById('hoursMonth').value; // "2026-04"
+  const monthVal = document.getElementById('hoursMonth').value;
   const [year, month] = monthVal.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
 
-  // Get user's work days and hours (Sun=0 through Fri=5; Sat never)
   const workDays = {};
   for (let i = 0; i <= 5; i++) {
     const checked = document.getElementById('chk_day' + i).checked;
@@ -918,78 +1280,108 @@ function calcHours() {
 
   let potential = 0;
   let teken = 0;
-  const breakdown = [];
+
+  // grouped counts
+  const groups = {
+    regular: { count: 0, hours: 0 },
+    erev: { count: 0, hours: 0 },
+    cholhamoed: { count: 0, hours: 0 },
+    chag: 0,
+    mekutzar: { count: 0, hours: 0 },
+  };
 
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month - 1, d);
-    const dow = date.getDay(); // 0=Sun, 6=Sat
+    const dow = date.getDay();
     const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     const holiday = HOLIDAYS[dateStr];
 
-    // Saturday: never counted in either bucket
     if (dow === 6) continue;
 
-    // Potential / teken multiplier base (full time = 8hr, adjusted by holiday)
     let potentialDay = 8;
     let tekenMultiplier = 1;
-    let dayLabel = DAY_NAMES_HE[dow] + ' ' + d + '/' + month;
-    let dayNote = '';
+    let dayType = 'regular';
 
     if (holiday) {
       if (holiday.type === 'chag' || holiday.type === 'yomAtzmaut') {
         potentialDay = 0;
         tekenMultiplier = 0;
-        dayNote = holiday.name + ' — 0 שעות';
+        dayType = 'chag';
       } else if (holiday.type === 'erev') {
         potentialDay = 4;
-        tekenMultiplier = 0.5; // 50% of regular hours
-        dayNote = holiday.name + ' — 4 שעות (50%)';
+        tekenMultiplier = 0.5;
+        dayType = 'erev';
       } else if (holiday.type === 'cholhamoed') {
         potentialDay = 5;
-        tekenMultiplier = 0.625; // 62.5% of regular hours
-        dayNote = holiday.name + ' — 5 שעות (62.5%)';
+        tekenMultiplier = 0.625;
+        dayType = 'cholhamoed';
       } else if (holiday.type === 'mekutzar') {
-        potentialDay = 8; // counts as full day
+        potentialDay = 8;
         tekenMultiplier = 1;
-        dayNote = holiday.name + ' — 8 שעות (יום מקוצר = מלא)';
+        dayType = 'mekutzar';
       }
-    } else {
-      dayNote = dow === 5 ? 'שישי — לתקן בלבד' : 'יום רגיל — 8 שעות';
     }
 
-    // POTENTIAL: Sun-Thu only (Friday never adds to potential; that's the rule)
     if (dow !== 5) {
       potential += potentialDay;
     }
 
-    // TEKEN: user's checked work days, including Friday if checked
     if (dow in workDays) {
       const regularHours = workDays[dow];
       const tekenHours = regularHours * tekenMultiplier;
       teken += tekenHours;
-      if (dow === 5) {
-        dayNote =
-          (holiday ? holiday.name + ' (שישי)' : 'שישי') +
-          ` — תקן בלבד: ${tekenHours.toFixed(2)} (לא לפוטנציאלי)`;
-      } else if (tekenMultiplier !== 1 && tekenMultiplier !== 0) {
-        dayNote += ` | תקן: ${tekenHours.toFixed(2)}`;
-      } else if (tekenMultiplier === 1) {
-        dayNote += ` | תקן: ${regularHours}`;
+
+      // group accounting only for Sun-Thu (Friday handled separately if needed)
+      if (dow !== 5) {
+        if (dayType === 'regular') {
+          groups.regular.count += 1;
+          groups.regular.hours += tekenHours;
+        } else if (dayType === 'erev') {
+          groups.erev.count += 1;
+          groups.erev.hours += tekenHours;
+        } else if (dayType === 'cholhamoed') {
+          groups.cholhamoed.count += 1;
+          groups.cholhamoed.hours += tekenHours;
+        } else if (dayType === 'chag') {
+          groups.chag += 1;
+        } else if (dayType === 'mekutzar') {
+          groups.mekutzar.count += 1;
+          groups.mekutzar.hours += tekenHours;
+        }
       }
-      const color = dow === 5 ? '#fde047' : '#93c5fd';
-      breakdown.push(`<div style="color:${color};">${dayLabel} — ${dayNote} ✓</div>`);
-    } else if (dow !== 5) {
-      // Sun-Thu non-work days: show in breakdown (potential still counts)
-      breakdown.push(`<div>${dayLabel} — ${dayNote}</div>`);
     }
-    // Fridays not worked: silently skipped (matches old behavior pre-Friday-support)
   }
 
   document.getElementById('hr_potential').textContent = potential + ' שעות';
   document.getElementById('hr_teken').textContent = teken.toFixed(2) + ' שעות';
-  document.getElementById('dayBreakdown').innerHTML = breakdown.join('');
 
-  // Save hours tab state (Sun=0 through Fri=5)
+  // Grouped breakdown
+  const breakdownLines = [];
+  if (groups.regular.count > 0) {
+    breakdownLines.push(
+      `<div>ימי חול: ${groups.regular.count} × ${(groups.regular.hours / groups.regular.count).toFixed(0)} = ${groups.regular.hours.toFixed(1)}ש</div>`,
+    );
+  }
+  if (groups.erev.count > 0) {
+    breakdownLines.push(
+      `<div>ערב חג: ${groups.erev.count} × ${(groups.erev.hours / groups.erev.count).toFixed(1)} = ${groups.erev.hours.toFixed(1)}ש</div>`,
+    );
+  }
+  if (groups.cholhamoed.count > 0) {
+    breakdownLines.push(
+      `<div>חול המועד: ${groups.cholhamoed.count} × ${(groups.cholhamoed.hours / groups.cholhamoed.count).toFixed(2)} = ${groups.cholhamoed.hours.toFixed(1)}ש</div>`,
+    );
+  }
+  if (groups.chag > 0) {
+    breakdownLines.push(`<div>חג: ${groups.chag} (לא נכלל)</div>`);
+  }
+  if (groups.mekutzar.count > 0) {
+    breakdownLines.push(
+      `<div>יום מקוצר: ${groups.mekutzar.count} × ${(groups.mekutzar.hours / groups.mekutzar.count).toFixed(0)} = ${groups.mekutzar.hours.toFixed(1)}ש</div>`,
+    );
+  }
+  document.getElementById('dayBreakdown').innerHTML = breakdownLines.join('');
+
   try {
     const hdata = { month: monthVal, days: {} };
     for (let i = 0; i <= 5; i++) {
@@ -999,15 +1391,44 @@ function calcHours() {
       };
     }
     localStorage.setItem('premiot_hours', JSON.stringify(hdata));
-  } catch (e) {}
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function flashInput(el) {
+  if (!el) return;
+  el.classList.remove('flash');
+  // trigger reflow
+  void el.offsetWidth;
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 250);
 }
 
 function applyHoursToCalc() {
   const pot = document.getElementById('hr_potential').textContent.replace(/[^\d.]/g, '');
   const tek = document.getElementById('hr_teken').textContent.replace(/[^\d.]/g, '');
-  document.getElementById('shaPotential').value = pot;
-  document.getElementById('shaTeken').value = tek;
-  // Sync the month selector on calc tab
+
+  // shared potential
+  const sharedEl = document.getElementById('shaPotential');
+  sharedEl.value = pot;
+  flashInput(sharedEl);
+
+  // Pick clinic: dropdown if multi, else clinic 0
+  let targetClinicId = null;
+  if (clinics.length > 1) {
+    const sel = document.getElementById('applyClinic');
+    targetClinicId = sel ? sel.value : clinics[0].id;
+  } else {
+    targetClinicId = clinics[0].id;
+  }
+  const clinic = clinics.find((c) => c.id === targetClinicId) || clinics[0];
+  clinic.shaTeken = tek;
+  lastEditedClinicId = clinic.id;
+  // expand it
+  clinics.forEach((c) => (c.expanded = c.id === clinic.id));
+
+  // Sync month
   const monthVal = document.getElementById('hoursMonth').value;
   const [y, m] = monthVal.split('-').map(Number);
   const monthNames = [
@@ -1026,7 +1447,6 @@ function applyHoursToCalc() {
   ];
   const label = monthNames[m - 1] + ' ' + y;
   const sel = document.getElementById('selectedMonth');
-  // Add option if not exists
   let found = false;
   for (let i = 0; i < sel.options.length; i++) {
     if (sel.options[i].value === label) {
@@ -1042,9 +1462,18 @@ function applyHoursToCalc() {
     sel.appendChild(opt);
     sel.value = label;
   }
-  // Update month display label
   document.getElementById('selectedMonthDisplay').textContent = label;
+
   switchTab('calc');
+  renderClinics();
+  // flash the targeted teken input after render
+  setTimeout(() => {
+    const card = document.querySelector(`[data-clinic-card][data-clinic-id="${clinic.id}"]`);
+    if (card) {
+      const inp = card.querySelector('[data-field="shaTeken"]');
+      flashInput(inp);
+    }
+  }, 50);
   calc();
 }
 
@@ -1052,7 +1481,7 @@ function syncMonthAndGoToHours() {
   switchTab('hours');
 }
 
-// Restore hours tab state from localStorage
+// Restore hours tab state
 (function () {
   try {
     const raw = localStorage.getItem('premiot_hours');
@@ -1067,8 +1496,16 @@ function syncMonthAndGoToHours() {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    /* ignore */
+  }
 })();
 
+// ---- BOOTSTRAP ----
 loadFromStorage();
+if (clinics.length === 0) {
+  clinics = [newClinicObj('מרפאה 1')];
+}
+renderClinics();
+maybeLockShared();
 calc();
