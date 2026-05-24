@@ -207,6 +207,9 @@
             <label>
               <button class="tip-btn" data-tip="shaPotential">?</button>
               שעות פוטנציאליות
+              <span class="from-hours-badge" id="shaPotentialBadge" style="display: none"
+                >מ-טאב שעות</span
+              >
             </label>
             <span class="unit">שעות</span>
             <input
@@ -218,8 +221,12 @@
               step="0.5"
               lang="en"
               autocomplete="off"
+              readonly
               oninput="calc()"
             />
+            <button type="button" class="edit-from-hours" onclick="goEditHoursForShared()">
+              ערוך
+            </button>
           </div>
           <div class="input-row">
             <label>
@@ -270,6 +277,18 @@
           <input type="hidden" id="takara" value="5400" />
           <input type="hidden" id="tarif" value="40.49" />
           <input type="hidden" id="makdam" value="2" />
+        </div>
+
+        <!-- Empty-state — shown when shaPotential is unset (user hasn't run hours tab yet) -->
+        <div id="hoursEmptyState" class="hours-empty" style="display: none">
+          <div class="he-title">מלאי קודם את טאב השעות</div>
+          <div class="he-body">
+            שעות פוטנציאליות + שעות תקן מחושבות אוטומטית לפי הימים והחודש — פתחי את טאב השעות כדי
+            להזין.
+          </div>
+          <button type="button" class="cta-primary" onclick="switchTab('hours')">
+            ← מלאי שעות תחילה
+          </button>
         </div>
 
         <!-- MULTI-CLINIC CONTAINER -->
@@ -387,7 +406,7 @@
           >
             ↩ חזור
           </button>
-          <button onclick="resetFields()" class="action-btn">🔄 איפוס</button>
+          <button data-reset-btn onclick="resetFields()" class="action-btn">🔄 איפוס</button>
           <button onclick="downloadPDF()" class="action-btn">📄 שמור PDF</button>
           <button onclick="downloadExcel()" class="action-btn">📊 שמור Excel</button>
         </div>
@@ -445,6 +464,9 @@
             <label>
               <button class="tip-btn" data-tip="shaTeken">?</button>
               שעות תקן (לפי משרתי)
+              <span class="from-hours-badge" data-teken-badge style="display: none"
+                >מ-טאב שעות</span
+              >
             </label>
             <span class="unit">שעות</span>
             <input
@@ -456,8 +478,17 @@
               step="0.5"
               lang="en"
               autocomplete="off"
+              readonly
               oninput="onClinicInput(this)"
             />
+            <button
+              type="button"
+              class="edit-from-hours"
+              data-edit-teken
+              onclick="goEditHoursForClinic(this)"
+            >
+              ערוך
+            </button>
           </div>
           <div class="input-row">
             <label>
@@ -589,6 +620,7 @@
       </div>
     </template>
 
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>
 </html>

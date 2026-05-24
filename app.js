@@ -874,6 +874,9 @@ function calc() {
   // Auto-open the פירוט drill-down when result exists, only first time
   maybeAutoOpenDetail(totalPremium > 0 && anyClinicHasInput);
 
+  // Hours-first flow: empty-state placeholder + from-hours badges
+  updateHoursFirstUI();
+
   saveToStorage();
 }
 
@@ -956,21 +959,92 @@ function setVetek(isVetek, skipCalc) {
   if (!skipCalc) calc();
 }
 
+// ---- TOAST ----
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.remove('show');
+  }, 2200);
+}
+
+// ---- RESET — two-stage confirm ----
+// Allison feedback 2026-05-24: she wants איפוס prominent on calc page but
+// can't have one mis-click nuke the whole form. First click arms; second
+// click within 3s actually resets. Restore button after 3s if no follow-up.
+let resetArmed = false;
+let resetArmTimer = null;
 function resetFields() {
+  const btn = document.querySelector('[data-reset-btn]');
+  if (!resetArmed) {
+    resetArmed = true;
+    if (btn) {
+      btn.classList.add('armed');
+      btn.dataset.origText = btn.dataset.origText || btn.textContent;
+      btn.textContent = 'לחץ שוב לאיפוס';
+    }
+    if (resetArmTimer) clearTimeout(resetArmTimer);
+    resetArmTimer = setTimeout(() => {
+      resetArmed = false;
+      if (btn) {
+        btn.classList.remove('armed');
+        if (btn.dataset.origText) btn.textContent = btn.dataset.origText;
+      }
+    }, 3000);
+    return;
+  }
+  // Confirmed — perform reset
+  resetArmed = false;
+  if (resetArmTimer) clearTimeout(resetArmTimer);
+  if (btn) {
+    btn.classList.remove('armed');
+    if (btn.dataset.origText) btn.textContent = btn.dataset.origText;
+  }
+
   saveUndoSnapshot();
   document.getElementById('shaPotential').value = '';
   document.getElementById('avgShnati').value = '';
+  // Default to NOT vetek — don't carry the old bug forward
+  setVetek(false, true);
   clinics = [newClinicObj('מרפאה 1')];
   lastEditedClinicId = clinics[0].id;
   detailAutoOpened = false;
+
+  // Clear hours-tab UI (checkboxes + hour inputs)
+  try {
+    for (let i = 0; i <= 5; i++) {
+      const chk = document.getElementById('chk_day' + i);
+      const inp = document.getElementById('hrs_day' + i);
+      if (chk) chk.checked = false;
+      if (inp) inp.value = '';
+    }
+    const potEl = document.getElementById('hr_potential');
+    const tekEl = document.getElementById('hr_teken');
+    if (potEl) potEl.textContent = '—';
+    if (tekEl) tekEl.textContent = '—';
+    const breakdownEl = document.getElementById('dayBreakdown');
+    if (breakdownEl) breakdownEl.innerHTML = '';
+  } catch (e) {
+    /* ignore */
+  }
+
+  // Wipe ALL persisted state
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_KEY);
+    localStorage.removeItem('premiot_hours');
     localStorage.removeItem('premiot_last_month_total');
   } catch (e) {
     /* ignore */
   }
+
   renderClinics();
   calc();
+  showToast('אופס — חזרנו למצב ברירת מחדל');
 }
 
 // ---- EXPORTS (PDF + Excel) ----
@@ -1492,6 +1566,71 @@ function syncMonthAndGoToHours() {
   switchTab('hours');
 }
 
+// ---- HOURS-FIRST FLOW ----
+// Edit-link on the shared "שעות פוטנציאליות" row — sends user to hours tab.
+// (Hours tab state is preserved separately in premiot_hours.)
+function goEditHoursForShared() {
+  switchTab('hours');
+  showToast('עדכני את הימים והשעות, ואז "העבר למחשבון" ←');
+}
+
+// Per-clinic teken edit-link — select that clinic in the apply-dropdown
+// so when the user hits "העבר למחשבון" it lands in the right place.
+function goEditHoursForClinic(linkEl) {
+  const card = linkEl.closest('[data-clinic-card]');
+  const cid = card ? card.getAttribute('data-clinic-id') : null;
+  if (cid) {
+    lastEditedClinicId = cid;
+    const sel = document.getElementById('applyClinic');
+    if (sel) {
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === cid) {
+          sel.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  }
+  switchTab('hours');
+  showToast('עדכני את הימים והשעות, ואז "העבר למחשבון" ←');
+}
+
+// Show/hide empty-state and from-hours badges based on whether shared
+// potential + per-clinic teken are populated. Called from calc() each tick.
+function updateHoursFirstUI() {
+  const sharedPot = parseFloat(document.getElementById('shaPotential').value) || 0;
+  const emptyEl = document.getElementById('hoursEmptyState');
+  const sharedBadge = document.getElementById('shaPotentialBadge');
+  const clinicsContainer = document.getElementById('clinicsContainer');
+  const addBtn = document.querySelector('.add-clinic-btn');
+
+  const sharedEditLink = document.querySelector('.shared-strip .edit-from-hours');
+  if (sharedPot <= 0) {
+    if (emptyEl) emptyEl.style.display = '';
+    if (clinicsContainer) clinicsContainer.style.display = 'none';
+    if (addBtn) addBtn.style.display = 'none';
+    if (sharedBadge) sharedBadge.style.display = 'none';
+    if (sharedEditLink) sharedEditLink.style.display = 'none';
+  } else {
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (clinicsContainer) clinicsContainer.style.display = '';
+    if (addBtn) addBtn.style.display = '';
+    if (sharedBadge) sharedBadge.style.display = '';
+    if (sharedEditLink) sharedEditLink.style.display = '';
+  }
+
+  // Per-clinic teken badge + edit link — show only when teken has a value
+  document.querySelectorAll('[data-clinic-card]').forEach((card) => {
+    const tekenInput = card.querySelector('[data-field="shaTeken"]');
+    const badge = card.querySelector('[data-teken-badge]');
+    const editLink = card.querySelector('[data-edit-teken]');
+    if (!tekenInput) return;
+    const v = parseFloat(tekenInput.value) || 0;
+    if (badge) badge.style.display = v > 0 ? '' : 'none';
+    if (editLink) editLink.style.display = v > 0 ? '' : 'none';
+  });
+}
+
 // Restore hours tab state
 (function () {
   try {
@@ -1513,6 +1652,11 @@ function syncMonthAndGoToHours() {
 })();
 
 // ---- BOOTSTRAP ----
+// Detect "fresh load" BEFORE loadFromStorage migrates anything.
+const _freshLoad =
+  !localStorage.getItem(STORAGE_KEY) &&
+  !localStorage.getItem(LEGACY_KEY) &&
+  !localStorage.getItem('premiot_hours');
 loadFromStorage();
 if (clinics.length === 0) {
   clinics = [newClinicObj('מרפאה 1')];
@@ -1520,3 +1664,9 @@ if (clinics.length === 0) {
 renderClinics();
 maybeLockShared();
 calc();
+
+// Fresh user with no data → land on Hours tab so they get the natural
+// "fill hours first" flow. Returning users land on calc as before.
+if (_freshLoad) {
+  switchTab('hours');
+}

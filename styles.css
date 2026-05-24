@@ -898,3 +898,126 @@ select option {
   font-size: 10px;
   color: var(--muted);
 }
+
+/* Read-only field treatment — אומר ל-Allison: השדה הזה מגיע מטאב שעות,
+   לא מקלידים אותו ישירות. Keeps tabular-nums + alignment but mutes chrome
+   and disables the focus-ring. */
+.input-row input[readonly] {
+  background: var(--surface-3);
+  color: var(--text);
+  cursor: not-allowed;
+  border-color: var(--border);
+}
+.input-row input[readonly]:focus {
+  border-color: var(--border);
+  background: var(--surface-3);
+  box-shadow: none;
+}
+
+.from-hours-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.edit-from-hours {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-family: inherit;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
+}
+.edit-from-hours:hover {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+/* Empty-state placeholder shown on calc tab when no hours yet —
+   prompts user back to hours tab without scolding. */
+.hours-empty {
+  margin: 8px 0 16px;
+  padding: 18px 16px;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  text-align: center;
+}
+.hours-empty .he-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.hours-empty .he-body {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.hours-empty .cta-primary {
+  width: auto;
+  display: inline-block;
+  padding: 10px 18px;
+}
+
+/* Reset button — armed state. After first click it changes to "לחץ שוב
+   לאיפוס" and pulses for 3s. Second click within window confirms. */
+.action-btn.armed {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger);
+  animation: armed-pulse 900ms ease-in-out infinite;
+}
+@keyframes armed-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(192, 57, 43, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(192, 57, 43, 0.18);
+  }
+}
+
+/* Toast — brief slide-up confirmation. One accent stripe via accent color. */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: var(--surface);
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  box-shadow: 0 8px 24px rgba(26, 25, 21, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  z-index: 10000;
+  direction: rtl;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
