@@ -682,14 +682,18 @@ function calc() {
   // ---- Sticky ----
   document.getElementById('r_total_sticky').textContent = fmtILS(totalPremium);
   const stickyPctVal = totalCeiling > 0 ? Math.min((totalPremium / totalCeiling) * 100, 100) : 0;
-  const stickyColor =
-    stickyPctVal >= 100
-      ? '#16a34a'
-      : stickyPctVal >= 75
-        ? '#2563eb'
-        : stickyPctVal >= 40
-          ? '#d97706'
-          : '#dc2626';
+  // Status palette: warning/danger reserved for actual signals; default to
+  // the single forest-green accent. When there's no data yet (totalCeiling
+  // is zero), don't shout — render neutral text-color so a fresh page isn't
+  // visually "in danger."
+  const hasData = totalCeiling > 0;
+  const stickyColor = !hasData
+    ? '#1a1915'
+    : stickyPctVal >= 75
+      ? '#2d6a4f'
+      : stickyPctVal >= 40
+        ? '#b5621a'
+        : '#c0392b';
   document.getElementById('stickyProgressBar').style.width = stickyPctVal + '%';
   document.getElementById('stickyProgressBar').style.background = stickyColor;
   document.getElementById('r_total_sticky').style.color = stickyColor;
@@ -708,14 +712,13 @@ function calc() {
   const gapToTakara = totalCeiling - totalPremium;
   const progressPct = totalCeiling > 0 ? Math.min((totalPremium / totalCeiling) * 100, 100) : 0;
   const atOrOverCap = totalCeiling > 0 && totalPremium >= totalCeiling - 0.5;
-  const progressColor =
-    progressPct >= 100
-      ? '#16a34a'
-      : progressPct >= 75
-        ? '#2563eb'
-        : progressPct >= 40
-          ? '#d97706'
-          : '#dc2626';
+  const progressColor = !hasData
+    ? '#a09e96'
+    : progressPct >= 75
+      ? '#2d6a4f'
+      : progressPct >= 40
+        ? '#b5621a'
+        : '#c0392b';
 
   document.getElementById('takaraProgress').innerHTML =
     totalCeiling > 0
@@ -923,21 +926,8 @@ function setVetek(isVetek, skipCalc) {
   const reg = document.getElementById('btn-regular');
   const vet = document.getElementById('btn-vetek');
   if (reg && vet) {
-    if (isVetek) {
-      reg.style.background = 'var(--surface)';
-      reg.style.color = 'var(--muted)';
-      reg.style.borderColor = 'var(--border-strong)';
-      vet.style.background = '#2563eb';
-      vet.style.color = '#fff';
-      vet.style.borderColor = '#2563eb';
-    } else {
-      reg.style.background = '#2563eb';
-      reg.style.color = '#fff';
-      reg.style.borderColor = '#2563eb';
-      vet.style.background = 'var(--surface)';
-      vet.style.color = 'var(--muted)';
-      vet.style.borderColor = 'var(--border-strong)';
-    }
+    reg.classList.toggle('active', !isVetek);
+    vet.classList.toggle('active', !!isVetek);
   }
   if (!skipCalc) calc();
 }
@@ -1128,11 +1118,8 @@ function toggleSection(id) {
 function switchTab(tab) {
   document.getElementById('panel-calc').style.display = tab === 'calc' ? '' : 'none';
   document.getElementById('panel-hours').style.display = tab === 'hours' ? '' : 'none';
-  document.getElementById('tab-calc').style.background = tab === 'calc' ? '#2563eb' : 'transparent';
-  document.getElementById('tab-calc').style.color = tab === 'calc' ? '#fff' : '#64748b';
-  document.getElementById('tab-hours').style.background =
-    tab === 'hours' ? '#2563eb' : 'transparent';
-  document.getElementById('tab-hours').style.color = tab === 'hours' ? '#fff' : '#64748b';
+  document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
+  document.getElementById('tab-hours').classList.toggle('active', tab === 'hours');
   if (tab === 'hours') calcHours();
 }
 
@@ -1256,7 +1243,7 @@ const DAY_NAMES_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
     row.className = 'input-row';
     row.innerHTML = `
       <label style="display:flex; align-items:center; gap:8px;">
-        <input type="checkbox" id="chk_${d.id}" onchange="calcHours()" style="width:18px; height:18px; accent-color:#2563eb;">
+        <input type="checkbox" id="chk_${d.id}" onchange="calcHours()" style="width:18px; height:18px; accent-color:#2d6a4f;">
         <span style="font-size:13px; color:var(--text);">${d.name}</span>
       </label>
       <span class="unit">שעות</span>

@@ -60,72 +60,16 @@
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
       <p>חישוב פרמיית עבודה ופרמיית העדרות</p>
-      <div
-        style="
-          margin-top: 12px;
-          background: #fffbeb;
-          border: 1px solid #fde68a;
-          border-radius: 8px;
-          padding: 6px 12px;
-          max-width: 480px;
-          margin-left: auto;
-          margin-right: auto;
-          font-size: 11px;
-          color: #92400e;
-        "
-      >
-        מחשבון לא רשמי — תמיד צלבני מול התלוש
-      </div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש</div>
     </div>
 
     <!-- Tab Navigation -->
     <div style="max-width: 720px; margin: 0 auto; padding: 16px 14px 0">
-      <div
-        style="
-          display: flex;
-          gap: 0;
-          background: var(--surface);
-          border-radius: 10px;
-          padding: 4px;
-          border: 1px solid var(--border);
-        "
-      >
-        <button
-          id="tab-calc"
-          onclick="switchTab('calc')"
-          style="
-            flex: 1;
-            padding: 10px;
-            border-radius: 8px;
-            font-family: 'Heebo', sans-serif;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            background: #2563eb;
-            border: none;
-            color: #fff;
-          "
-        >
+      <div class="tab-bar">
+        <button id="tab-calc" class="tab-btn active" onclick="switchTab('calc')">
           מחשבון פרמיה
         </button>
-        <button
-          id="tab-hours"
-          onclick="switchTab('hours')"
-          style="
-            flex: 1;
-            padding: 10px;
-            border-radius: 8px;
-            font-family: 'Heebo', sans-serif;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            background: transparent;
-            border: none;
-            color: #64748b;
-          "
-        >
-          חישוב שעות
-        </button>
+        <button id="tab-hours" class="tab-btn" onclick="switchTab('hours')">חישוב שעות</button>
       </div>
     </div>
 
@@ -205,23 +149,7 @@
                 "
               ></select>
             </div>
-            <button
-              onclick="applyHoursToCalc()"
-              style="
-                width: 100%;
-                padding: 14px;
-                background: #16a34a;
-                border: 1px solid #15803d;
-                border-radius: 8px;
-                color: #fff;
-                font-size: 14px;
-                font-weight: 700;
-                font-family: 'Heebo', 'Arial Hebrew', 'David', Arial, sans-serif;
-                cursor: pointer;
-              "
-            >
-              העבר למחשבון הפרמיה ←
-            </button>
+            <button onclick="applyHoursToCalc()" class="cta-primary">העבר למחשבון הפרמיה ←</button>
           </div>
 
           <div class="section-title">
@@ -239,45 +167,22 @@
         <!-- STICKY RESULT — always visible while scrolling -->
         <div class="sticky-result">
           <div style="display: flex; align-items: center; gap: 12px; justify-content: center">
-            <div style="text-align: center">
-              <div style="font-size: 11px; color: var(--accent); font-weight: 600">סך פרמיה</div>
-              <div id="r_total_sticky" style="font-size: 28px; font-weight: 800; color: #2563eb">
-                ₪0.00
-              </div>
+            <div class="total-block" style="text-align: center">
+              <div class="label">סך פרמיה</div>
+              <div id="r_total_sticky" class="value">₪0.00</div>
             </div>
             <div style="flex: 1; max-width: 200px">
-              <div
-                id="stickyProgress"
-                style="
-                  background: var(--surface-3);
-                  border-radius: 99px;
-                  height: 8px;
-                  overflow: hidden;
-                "
-              >
-                <div
-                  id="stickyProgressBar"
-                  style="
-                    width: 0%;
-                    height: 100%;
-                    background: #2563eb;
-                    border-radius: 99px;
-                    transition: width 0.4s;
-                  "
-                ></div>
+              <div id="stickyProgress" class="progress-track">
+                <div id="stickyProgressBar" class="progress-fill" style="width: 0%"></div>
               </div>
-              <div style="display: flex; justify-content: space-between; margin-top: 3px">
-                <span id="stickyPct" style="font-size: 10px; color: var(--muted)">0%</span>
-                <span id="stickyTakara" style="font-size: 10px; color: var(--muted)">תקרה: —</span>
+              <div class="progress-meta">
+                <span id="stickyPct">0%</span>
+                <span id="stickyTakara">תקרה: —</span>
               </div>
             </div>
-            <div
-              style="text-align: center; border-right: 1px solid var(--border); padding-right: 12px"
-            >
-              <div style="font-size: 10px; color: var(--muted); font-weight: 600">ממוצע</div>
-              <div id="r_avg_sticky" style="font-size: 16px; font-weight: 800; color: var(--text)">
-                —
-              </div>
+            <div class="avg-block">
+              <div class="label">ממוצע</div>
+              <div id="r_avg_sticky" class="value">—</div>
             </div>
           </div>
           <div id="clinicChips" class="clinic-chips"></div>
@@ -341,42 +246,22 @@
               <button class="tip-btn" data-tip="takara">?</button>
               סוג עובדת
             </label>
-            <div style="display: flex; gap: 6px">
+            <div class="toggle-group">
               <button
                 type="button"
                 id="btn-regular"
+                class="toggle-btn active"
                 data-shared-toggle
                 onclick="setVetek(false)"
-                style="
-                  padding: 6px 10px;
-                  border-radius: 6px;
-                  font-family: inherit;
-                  font-size: 12px;
-                  font-weight: 700;
-                  cursor: pointer;
-                  background: #2563eb;
-                  border: 1px solid #2563eb;
-                  color: #fff;
-                "
               >
                 רגילה
               </button>
               <button
                 type="button"
                 id="btn-vetek"
+                class="toggle-btn"
                 data-shared-toggle
                 onclick="setVetek(true)"
-                style="
-                  padding: 6px 10px;
-                  border-radius: 6px;
-                  font-family: inherit;
-                  font-size: 12px;
-                  font-weight: 700;
-                  cursor: pointer;
-                  background: var(--surface);
-                  border: 1px solid var(--border-strong);
-                  color: var(--muted);
-                "
               >
                 ותיקה
               </button>
@@ -392,24 +277,9 @@
         <button type="button" class="add-clinic-btn" onclick="addClinic()">+ הוסף מרפאה</button>
 
         <!-- Month display — auto-populated from hours tab -->
-        <div
-          onclick="syncMonthAndGoToHours()"
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 14px;
-            margin: 14px 0 8px;
-            border-radius: 8px;
-            background: var(--accent-bg);
-            border: 1px solid var(--accent-border);
-            cursor: pointer;
-          "
-        >
-          <span style="font-size: 13px; color: var(--accent); font-weight: 600"
-            >📆 <span id="selectedMonthDisplay">לא נבחר חודש</span></span
-          >
-          <span style="font-size: 11px; color: var(--accent)">שנה בטאב שעות ←</span>
+        <div onclick="syncMonthAndGoToHours()" class="month-jump">
+          <span class="label">📆 <span id="selectedMonthDisplay">לא נבחר חודש</span></span>
+          <span class="hint">שנה בטאב שעות ←</span>
         </div>
         <select id="selectedMonth" onchange="saveToStorage()" style="display: none"></select>
 
@@ -431,41 +301,11 @@
 
         <!-- DRILL DOWN: פירוט (defaults OPEN once result exists) -->
         <div style="margin-top: 14px">
-          <button
-            onclick="toggleSection('detailPremia')"
-            style="
-              width: 100%;
-              padding: 12px 14px;
-              border-radius: 8px;
-              background: var(--accent-bg);
-              border: 1px solid var(--accent-border);
-              color: var(--accent);
-              font-size: 14px;
-              font-weight: 700;
-              cursor: pointer;
-              font-family: 'Heebo', 'Arial Hebrew', 'David', Arial, sans-serif;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            "
-          >
-            <span>💰 פירוט</span
-            ><span id="arrow_detailPremia" style="transition: transform 0.2s; font-size: 11px"
-              >▼</span
-            >
+          <button onclick="toggleSection('detailPremia')" class="disclosure-btn">
+            <span>💰 פירוט</span>
+            <span id="arrow_detailPremia" class="arrow">▼</span>
           </button>
-          <div
-            id="detailPremia"
-            style="
-              display: none;
-              margin-top: 4px;
-              padding: 6px 10px;
-              background: var(--surface);
-              border-radius: 0 0 8px 8px;
-              border: 1px solid var(--border);
-              border-top: none;
-            "
-          >
+          <div id="detailPremia" class="disclosure-panel">
             <div id="perClinicBreakdown"></div>
             <div class="result-row accent" style="border: none; background: none">
               <span class="rlabel">פרמיית עבודה — סמל 1783</span>
@@ -503,41 +343,11 @@
 
         <!-- DRILL DOWN: ניתוח (defaults closed, diagnostic values) -->
         <div style="margin-top: 8px">
-          <button
-            onclick="toggleSection('detailCalc')"
-            style="
-              width: 100%;
-              padding: 12px 14px;
-              border-radius: 8px;
-              background: var(--accent-bg);
-              border: 1px solid var(--accent-border);
-              color: var(--accent);
-              font-size: 14px;
-              font-weight: 700;
-              cursor: pointer;
-              font-family: 'Heebo', 'Arial Hebrew', 'David', Arial, sans-serif;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            "
-          >
-            <span>🔢 ניתוח</span
-            ><span id="arrow_detailCalc" style="transition: transform 0.2s; font-size: 11px"
-              >▼</span
-            >
+          <button onclick="toggleSection('detailCalc')" class="disclosure-btn">
+            <span>🔢 ניתוח</span>
+            <span id="arrow_detailCalc" class="arrow">▼</span>
           </button>
-          <div
-            id="detailCalc"
-            style="
-              display: none;
-              margin-top: 4px;
-              padding: 6px 10px;
-              background: var(--surface);
-              border-radius: 0 0 8px 8px;
-              border: 1px solid var(--border);
-              border-top: none;
-            "
-          >
+          <div id="detailCalc" class="disclosure-panel">
             <div class="result-row" style="border: none; background: none">
               <span class="rlabel">אחוז משרה בפועל (סך כל המרפאות)</span>
               <span class="rvalue" id="r_mishra">—</span>
@@ -565,79 +375,21 @@
           </div>
         </div>
 
-        <!-- Undo + Reset + Copy Buttons -->
+        <!-- Undo + Reset + Copy Buttons — all neutral so no single utility
+             shouts louder than another. The big-number above is the moment. -->
         <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap">
           <button
             id="undoBtn"
             onclick="undoFields()"
             title="חזרה לערכים הקודמים — אפשר ללחוץ כמה פעמים"
-            style="
-              display: none;
-              flex: 1;
-              padding: 12px;
-              background: var(--surface);
-              border: 1px solid #d8b4fe;
-              border-radius: 8px;
-              color: #7c3aed;
-              font-size: 13px;
-              font-weight: 600;
-              font-family: 'Heebo', 'Arial Hebrew', 'David', Arial, sans-serif;
-              cursor: pointer;
-            "
+            class="action-btn"
+            style="display: none"
           >
             ↩ חזור
           </button>
-          <button
-            onclick="resetFields()"
-            style="
-              flex: 1;
-              padding: 12px;
-              background: var(--surface);
-              border: 1px solid var(--danger-border);
-              border-radius: 8px;
-              color: var(--danger);
-              font-size: 13px;
-              font-weight: 600;
-              font-family: 'Heebo', 'Arial Hebrew', 'David', Arial, sans-serif;
-              cursor: pointer;
-            "
-          >
-            🔄 איפוס
-          </button>
-          <button
-            onclick="downloadPDF()"
-            style="
-              flex: 1;
-              padding: 12px;
-              background: var(--surface);
-              border: 1px solid var(--accent-border);
-              border-radius: 8px;
-              color: var(--accent);
-              font-size: 13px;
-              font-weight: 600;
-              font-family: 'Heebo', 'Arial Hebrew', 'David', Arial, sans-serif;
-              cursor: pointer;
-            "
-          >
-            📄 שמור PDF
-          </button>
-          <button
-            onclick="downloadExcel()"
-            style="
-              flex: 1;
-              padding: 12px;
-              background: var(--surface);
-              border: 1px solid var(--success-border);
-              border-radius: 8px;
-              color: var(--success);
-              font-size: 13px;
-              font-weight: 600;
-              font-family: 'Heebo', 'Arial Hebrew', 'David', Arial, sans-serif;
-              cursor: pointer;
-            "
-          >
-            📊 שמור Excel
-          </button>
+          <button onclick="resetFields()" class="action-btn">🔄 איפוס</button>
+          <button onclick="downloadPDF()" class="action-btn">📄 שמור PDF</button>
+          <button onclick="downloadExcel()" class="action-btn">📊 שמור Excel</button>
         </div>
       </div>
     </div>

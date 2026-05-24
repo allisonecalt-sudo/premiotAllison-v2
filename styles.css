@@ -1,27 +1,34 @@
-/* ===== Light theme — matches workout-tracker + budget-2026 family ===== */
+/* ===== Calm light theme — same family as workout-tracker + budget-2026 =====
+ * Design intent (2026-05-24 calm-pass): single accent at a time, neutral
+ * chrome, one-moment-of-color per screen. Status colors (warning/danger/
+ * success) reserved for actual state surfaces (alerts, before-cap labels);
+ * never used as button chrome.
+ */
 :root {
-  --bg: #fafaf7;
+  --bg: #f5f4f0;
   --surface: #ffffff;
-  --surface-2: #f5f5f0;
-  --surface-3: #f1f5f9;
-  --text: #1e293b;
-  --muted: #64748b;
-  --muted-2: #94a3b8;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-bg: #eff6ff;
-  --accent-border: #bfdbfe;
-  --success: #16a34a;
-  --success-bg: #f0fdf4;
-  --success-border: #bbf7d0;
-  --warning: #d97706;
-  --warning-bg: #fffbeb;
-  --warning-border: #fde68a;
-  --danger: #dc2626;
-  --danger-bg: #fef2f2;
-  --danger-border: #fecaca;
+  --surface-2: #faf9f5;
+  --surface-3: #f0efe9;
+  --text: #1a1915;
+  --muted: #6b6960;
+  --muted-2: #a09e96;
+  --border: #e6e4dd;
+  --border-strong: #cfcdc5;
+  --accent: #2d6a4f;
+  --accent-hover: #245a42;
+  --accent-bg: rgba(45, 106, 79, 0.08);
+  --accent-border: rgba(45, 106, 79, 0.22);
+  --success: #2d6a4f;
+  --success-bg: rgba(45, 106, 79, 0.08);
+  --success-border: rgba(45, 106, 79, 0.22);
+  --warning: #b5621a;
+  --warning-bg: rgba(181, 98, 26, 0.08);
+  --warning-border: rgba(181, 98, 26, 0.25);
+  --danger: #c0392b;
+  --danger-bg: rgba(192, 57, 43, 0.06);
+  --danger-border: rgba(192, 57, 43, 0.22);
+  --focus-ring: rgba(45, 106, 79, 0.25);
+  --shadow-sm: 0 1px 2px rgba(26, 25, 21, 0.04);
 }
 
 * {
@@ -52,27 +59,40 @@ body {
 }
 
 .header {
-  background: linear-gradient(135deg, #ffffff 0%, #f5f5f0 50%, #ffffff 100%);
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
-  padding: 28px 20px 20px;
+  padding: 24px 20px 18px;
   text-align: center;
 }
 .header .sub {
-  font-size: 11px;
-  color: var(--accent);
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  margin-bottom: 8px;
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
 }
 .header h1 {
-  font-size: 26px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 700;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 .header p {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--muted);
   font-size: 13px;
+}
+.header .note {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.header .note::before {
+  content: '·';
+  margin-left: 6px;
+  color: var(--muted-2);
 }
 
 .container {
@@ -106,12 +126,12 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
-  margin-top: 20px;
+  margin-bottom: 6px;
+  margin-top: 14px;
 }
 .section-title span {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -132,6 +152,31 @@ body {
   border: 1px solid var(--border);
   margin-bottom: 5px;
   gap: 8px;
+}
+/* When input-rows live inside a clinic-card (already bordered), drop the
+   per-row border + surface so the card reads as one calm list, not 6 nested
+   white boxes. Same pattern budget-2026 uses for category tables. */
+.clinic-card .input-row {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  margin-bottom: 0;
+  padding: 10px 4px;
+}
+.clinic-card .input-row:last-of-type {
+  border-bottom: none;
+}
+.shared-strip .input-row {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  margin-bottom: 0;
+  padding: 10px 2px;
+}
+.shared-strip .input-row:last-of-type {
+  border-bottom: none;
 }
 .input-row label {
   font-size: 13px;
@@ -160,8 +205,8 @@ body {
 }
 .input-row input:focus {
   border-color: var(--accent);
-  background: var(--accent-bg);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 /* brief highlight when value pushed in from hours-tab */
 .input-row input.flash {
@@ -185,43 +230,50 @@ select option {
   padding: 8px;
 }
 
-/* Tooltip trigger */
+/* Tooltip trigger — calm muted dot, not a glowing pill. Becomes accent on
+   hover so it still reads as interactive. */
 .tip-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
+  background: var(--surface-3);
+  color: var(--muted);
   font-size: 10px;
   font-weight: 700;
   cursor: help;
-  border: none;
+  border: 1px solid var(--border);
   user-select: none;
   flex-shrink: 0;
   position: relative;
-  outline: 1px solid var(--accent-border);
-  outline-offset: 2px;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 .tip-btn:hover {
-  background: var(--accent-hover);
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 .result-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  margin-bottom: 4px;
+  padding: 8px 4px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.result-row:last-child {
+  border-bottom: none;
 }
 .result-row.accent {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
+  background: transparent;
 }
 .result-row .rlabel {
   font-size: 12px;
@@ -233,7 +285,8 @@ select option {
   color: var(--text);
 }
 .result-row.accent .rlabel {
-  color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
 }
 .result-row.accent .rvalue {
   color: var(--accent);
@@ -294,24 +347,30 @@ select option {
   color: var(--text);
 }
 
+/* The big-number card — the page's primary moment. Neutral surface, one
+   moment of accent color (the number itself). No competing chrome. */
 .total-box {
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 20px 16px;
+  padding: 22px 16px;
   text-align: center;
   margin-top: 16px;
+  box-shadow: var(--shadow-sm);
 }
 .total-box .tlabel {
-  font-size: 12px;
-  color: var(--accent);
+  font-size: 11px;
+  color: var(--muted);
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 .total-box .tamount {
-  font-size: 38px;
-  font-weight: 800;
+  font-size: 40px;
+  font-weight: 700;
   color: var(--accent);
+  letter-spacing: -0.02em;
 }
 .total-box .tsub {
   font-size: 11px;
@@ -368,8 +427,8 @@ select option {
   overflow: hidden;
 }
 .clinic-card.expanded {
-  border-color: var(--accent-border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 .clinic-header {
   display: flex;
@@ -517,4 +576,227 @@ select option {
 }
 .month-diff.down {
   color: var(--danger);
+}
+
+/* ===== Button system — added in calm-pass 2026-05-24 =====
+ * One accent at a time. Most buttons are neutral; only the *active* tab and
+ * the primary CTA carry color. Status colors live in alerts, not chrome.
+ */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 4px;
+  border: 1px solid var(--border);
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.tab-btn:hover {
+  color: var(--text);
+}
+.tab-btn.active {
+  background: var(--surface-3);
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Settings toggles (regular/senior, etc.) — pill-segmented, neutral when off,
+   filled-neutral when on. Same calm register as the tab bar. */
+.toggle-group {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-3);
+  border-radius: 8px;
+  padding: 3px;
+}
+.toggle-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  transition: all 120ms ease;
+}
+.toggle-btn:hover {
+  color: var(--text);
+}
+.toggle-btn.active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Action buttons (footer: undo / reset / PDF / Excel). All neutral so no
+   single one shouts more than another — they're all equal-rank utilities. */
+.action-btn {
+  flex: 1;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+.action-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+/* Primary CTA — only one on the page at a time (e.g., "העבר למחשבון") */
+.cta-primary {
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.cta-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Disclosure (accordion) triggers — navigation, not action. Neutral chrome. */
+.disclosure-btn {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 120ms ease;
+}
+.disclosure-btn:hover {
+  background: var(--surface-2);
+}
+.disclosure-btn .arrow {
+  transition: transform 0.2s;
+  font-size: 11px;
+  color: var(--muted);
+}
+.disclosure-panel {
+  display: none;
+  margin-top: 4px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-radius: 0 0 8px 8px;
+  border: 1px solid var(--border);
+  border-top: none;
+}
+
+/* Month-jump strip — tappable, neutral, with subtle accent on the icon */
+.month-jump {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  margin: 14px 0 8px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.month-jump:hover {
+  background: var(--surface-2);
+}
+.month-jump .label {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+}
+.month-jump .hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Sticky result strip — calm down: one accent application (the number),
+   smaller hero, no competing colors per side. */
+.sticky-result .total-block .label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+.sticky-result .total-block .value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.sticky-result .avg-block {
+  text-align: center;
+  border-right: 1px solid var(--border);
+  padding-right: 12px;
+}
+.sticky-result .avg-block .label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sticky-result .avg-block .value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.sticky-result .progress-track {
+  background: var(--surface-3);
+  border-radius: 99px;
+  height: 6px;
+  overflow: hidden;
+}
+.sticky-result .progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 0.4s;
+}
+.sticky-result .progress-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+}
+.sticky-result .progress-meta span {
+  font-size: 10px;
+  color: var(--muted);
 }
