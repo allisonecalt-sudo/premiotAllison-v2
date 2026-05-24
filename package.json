@@ -1,0 +1,17 @@
+{
+  "name": "premiotallison-v2",
+  "private": true,
+  "scripts": {
+    "test": "npx playwright test --reporter=list",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.4.0"
+  }
+}
