@@ -686,7 +686,8 @@ function calc() {
   // the single forest-green accent. When there's no cap yet OR no premium
   // recorded yet, render neutral text — a quiet ₪0.00 doesn't deserve
   // alarm-red on a fresh page.
-  const hasData = totalCeiling > 0 && totalPremium > 0;
+  // Use 0.5 cutoff (under one shekel = effectively zero given fmtILS rounds)
+  const hasData = totalCeiling > 0 && totalPremium >= 0.5;
   const stickyColor = !hasData
     ? '#1a1915'
     : stickyPctVal >= 75
