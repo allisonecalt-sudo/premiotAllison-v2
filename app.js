@@ -636,6 +636,28 @@ function calc() {
       pill.className = 'pill ' + r.pill;
       pill.textContent = r.pillLabel;
     }
+
+    // Always-visible mini-stats inside header (משרה / תקרה / סך פרמיה).
+    // Allison feedback 2026-05-24: she wants the three load-bearing numbers
+    // for each clinic visible without expanding.
+    const setMini = (key, txt, tone) => {
+      const el = card.querySelector(`[data-mini="${key}"]`);
+      if (!el) return;
+      el.textContent = txt;
+      el.classList.remove('warn', 'danger');
+      // preserve accent on totalClinic (set in template)
+      if (tone) el.classList.add(tone);
+    };
+    if (r.hasAnyInput) {
+      setMini('mishraPct', (r.mishraPct * 100).toFixed(1) + '%');
+      setMini('takaraClinic', fmtILS0(r.takaraClinic));
+      setMini('totalClinic', fmtILS0(r.totalClinic));
+    } else {
+      // Empty clinic: show em-dashes, calm — don't draw eye to nothing.
+      setMini('mishraPct', '—');
+      setMini('takaraClinic', '—');
+      setMini('totalClinic', '—');
+    }
   });
 
   // ---- Combined readouts ----

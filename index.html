@@ -309,7 +309,7 @@
             <div id="perClinicBreakdown"></div>
             <div class="result-row accent" style="border: none; background: none">
               <span class="rlabel">פרמיית עבודה — סמל 1783</span>
-              <span class="rvalue" id="r_avoda">—</span>
+              <span class="rvalue kpi lg" id="r_avoda">—</span>
             </div>
             <div
               class="result-row"
@@ -323,7 +323,7 @@
             </div>
             <div class="result-row accent" style="border: none; background: none">
               <span class="rlabel">פרמיית העדרות — סמל 1785</span>
-              <span class="rvalue" id="r_headrut">—</span>
+              <span class="rvalue kpi lg" id="r_headrut">—</span>
             </div>
             <div
               class="result-row"
@@ -350,27 +350,27 @@
           <div id="detailCalc" class="disclosure-panel">
             <div class="result-row" style="border: none; background: none">
               <span class="rlabel">אחוז משרה בפועל (סך כל המרפאות)</span>
-              <span class="rvalue" id="r_mishra">—</span>
+              <span class="rvalue kpi" id="r_mishra">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
               <span class="rlabel">תקרת תשלום לחודש (סך כל המרפאות)</span>
-              <span class="rvalue" id="r_takara">—</span>
+              <span class="rvalue kpi" id="r_takara">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
               <span class="rlabel">טיפולים משוקללים (סך)</span>
-              <span class="rvalue" id="r_tipulim">—</span>
+              <span class="rvalue kpi muted" id="r_tipulim">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
               <span class="rlabel">מכנה — שעות מושקעות (סך)</span>
-              <span class="rvalue" id="r_mecane">—</span>
+              <span class="rvalue kpi muted" id="r_mecane">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
               <span class="rlabel">ממוצע טיפולים לתשלום (משוקלל)</span>
-              <span class="rvalue" id="r_avg">—</span>
+              <span class="rvalue kpi" id="r_avg">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
               <span class="rlabel">סך שעות לתשלום (סך)</span>
-              <span class="rvalue" id="r_totalHours">—</span>
+              <span class="rvalue kpi muted" id="r_totalHours">—</span>
             </div>
           </div>
         </div>
@@ -418,6 +418,23 @@
           >
             מחק
           </button>
+        </div>
+        <!-- Always-visible mini-stats: משרה% / תקרה / סך פרמיה. Visible whether
+             card is collapsed or expanded — Allison should never have to expand
+             a clinic to see its three key numbers. -->
+        <div class="clinic-header-stats" data-clinic-header-stats>
+          <div class="mini-stat">
+            <div class="ms-label">משרה</div>
+            <div class="ms-value" data-mini="mishraPct">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-label">תקרה</div>
+            <div class="ms-value" data-mini="takaraClinic">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-label">סך פרמיה</div>
+            <div class="ms-value accent" data-mini="totalClinic">—</div>
+          </div>
         </div>
         <div class="clinic-body">
           <div class="section-title">
@@ -550,23 +567,23 @@
           </div>
           <div class="result-row" style="border: none; background: none">
             <span class="rlabel">שעות עבודה (מחושב)</span>
-            <span class="rvalue" data-readout="shaAvoda">0.00</span>
+            <span class="rvalue kpi muted" data-readout="shaAvoda">0.00</span>
           </div>
           <div class="result-row" style="border: none; background: none">
             <span class="rlabel">אחוז משרה במרפאה</span>
-            <span class="rvalue" data-readout="mishraPct">—</span>
+            <span class="rvalue kpi" data-readout="mishraPct">—</span>
           </div>
           <div class="result-row" style="border: none; background: none">
             <span class="rlabel">תקרת תשלום במרפאה</span>
-            <span class="rvalue" data-readout="takaraClinic">—</span>
+            <span class="rvalue kpi" data-readout="takaraClinic">—</span>
           </div>
           <div class="result-row accent" style="border: none">
             <span class="rlabel">פרמיית עבודה</span>
-            <span class="rvalue" data-readout="premiatAvoda">—</span>
+            <span class="rvalue kpi lg" data-readout="premiatAvoda">—</span>
           </div>
           <div class="result-row accent" style="border: none">
             <span class="rlabel">פרמיית העדרות</span>
-            <span class="rvalue" data-readout="premiatHeadrut">—</span>
+            <span class="rvalue kpi lg" data-readout="premiatHeadrut">—</span>
           </div>
         </div>
       </div>

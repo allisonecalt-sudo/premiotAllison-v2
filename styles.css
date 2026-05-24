@@ -292,6 +292,44 @@ select option {
   color: var(--accent);
 }
 
+/* ===== LOUD KPI RVALUES =====
+ * Per Allison feedback 2026-05-24: the calm-pass tipped too far — the load-
+ * bearing numbers (ממוצע, תקרה, אחוז משרה, פרמיות) need to POP off the calm
+ * chrome. Pattern: calm canvas, loud numbers. Same move as budget-2026's bold
+ * green KPI numbers on cream cards.
+ *
+ * `.kpi` = headline number (the thing she actually scans for): 20px, accent
+ * `.kpi.lg` = top-of-section moment (פרמיות 1783/1785): 22px, accent
+ * `.kpi.muted` = supporting figure that's still bold but stays dark (סך שעות) */
+.result-row .rvalue.kpi {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.result-row .rvalue.kpi.lg {
+  font-size: 22px;
+}
+.result-row .rvalue.kpi.muted {
+  color: var(--text);
+}
+/* Give a KPI row a tiny bit more vertical breathing room so the bigger number
+   doesn't crowd the next line. Tight enough to keep density. */
+.result-row:has(.rvalue.kpi) {
+  padding: 10px 4px;
+}
+/* Per-clinic in-body readouts: same pattern. The three headline numbers
+   (שעות עבודה מחושב / אחוז משרה במרפאה / תקרת תשלום במרפאה) carry the
+   per-clinic story — they were 14px dark, same weight as labels. Promote. */
+.clinic-card .result-row .rvalue.kpi {
+  font-size: 18px;
+}
+.clinic-card .result-row.accent .rvalue {
+  font-size: 18px;
+  font-weight: 800;
+}
+
 .alert {
   border-radius: 10px;
   padding: 12px 14px;
@@ -469,10 +507,63 @@ select option {
   outline: none;
 }
 .clinic-header .clinic-sum {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+
+/* Per-clinic mini-stats row — always visible inside the clinic-header so
+   Allison can scan משרה% / תקרה / סך פרמיה for each clinic without expanding.
+   Sits as a second line under the clinic-name/pill row. Calm dotted divider
+   on top, three labeled bold numbers. */
+.clinic-header-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 8px 14px 10px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.clinic-card:not(.expanded) .clinic-header-stats {
+  border-bottom: none;
+}
+.clinic-header-stats .mini-stat {
+  text-align: center;
+  border-inline-end: 1px solid var(--border);
+  padding-inline-end: 8px;
+}
+.clinic-header-stats .mini-stat:last-child {
+  border-inline-end: none;
+  padding-inline-end: 0;
+}
+.clinic-header-stats .mini-stat .ms-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+.clinic-header-stats .mini-stat .ms-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.clinic-header-stats .mini-stat .ms-value.accent {
+  color: var(--accent);
+}
+.clinic-header-stats .mini-stat .ms-value.warn {
+  color: var(--warning);
+}
+.clinic-header-stats .mini-stat .ms-value.danger {
+  color: var(--danger);
 }
 .clinic-header .clinic-delete {
   background: none;
@@ -746,8 +837,12 @@ select option {
   color: var(--muted);
 }
 
-/* Sticky result strip — calm down: one accent application (the number),
-   smaller hero, no competing colors per side. */
+/* Sticky result strip — calm chrome, LOUD numbers. The two values in here
+   (סך פרמיה + ממוצע) are the always-visible scan targets. Per Allison feedback
+   2026-05-24: ממוצע was demoted to 16px text-color in the calm pass and got
+   lost — bumped back to 22px accent so it reads as a definitive KPI, not a
+   footnote. The total (already accent) bumped 24→28 to keep the hierarchy
+   honest: total > avg, both loud. */
 .sticky-result .total-block .label {
   font-size: 10px;
   color: var(--muted);
@@ -757,10 +852,11 @@ select option {
   margin-bottom: 2px;
 }
 .sticky-result .total-block .value {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   color: var(--accent);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
 }
 .sticky-result .avg-block {
   text-align: center;
@@ -775,9 +871,11 @@ select option {
   letter-spacing: 0.08em;
 }
 .sticky-result .avg-block .value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+  line-height: 1.05;
 }
 .sticky-result .progress-track {
   background: var(--surface-3);
