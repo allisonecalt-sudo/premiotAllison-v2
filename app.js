@@ -869,7 +869,9 @@ const FULL_DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'ח�
   }
 })();
 
-// Build day input checkboxes (Sun=0 through Thu=4)
+// Build day input checkboxes (Sun=0 through Fri=5)
+// Friday hours add to teken (numerator) but NOT to potential (denominator).
+// Result: %משרה can exceed 100% for OTs whose regular contract includes Friday.
 (function () {
   const container = document.getElementById('dayInputs');
   const days = [
@@ -878,6 +880,7 @@ const FULL_DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'ח�
     { idx: 2, name: 'ג׳ (שלישי)', id: 'day2' },
     { idx: 3, name: 'ד׳ (רביעי)', id: 'day3' },
     { idx: 4, name: 'ה׳ (חמישי)', id: 'day4' },
+    { idx: 5, name: 'ו׳ (שישי) — לתקן בלבד', id: 'day5' },
   ];
   days.forEach((d) => {
     const row = document.createElement('div');
@@ -905,9 +908,9 @@ function calcHours() {
   const [year, month] = monthVal.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
 
-  // Get user's work days and hours
+  // Get user's work days and hours (Sun=0 through Fri=5; Sat never)
   const workDays = {};
-  for (let i = 0; i <= 4; i++) {
+  for (let i = 0; i <= 5; i++) {
     const checked = document.getElementById('chk_day' + i).checked;
     const hrs = parseFloat(document.getElementById('hrs_day' + i).value) || 0;
     if (checked && hrs > 0) workDays[i] = hrs;
@@ -923,10 +926,10 @@ function calcHours() {
     const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     const holiday = HOLIDAYS[dateStr];
 
-    // Skip Friday (5) and Saturday (6) for potential
-    if (dow === 5 || dow === 6) continue;
+    // Saturday: never counted in either bucket
+    if (dow === 6) continue;
 
-    // Potential hours (full time = 8hr base)
+    // Potential / teken multiplier base (full time = 8hr, adjusted by holiday)
     let potentialDay = 8;
     let tekenMultiplier = 1;
     let dayLabel = DAY_NAMES_HE[dow] + ' ' + d + '/' + month;
@@ -951,35 +954,45 @@ function calcHours() {
         dayNote = holiday.name + ' — 8 שעות (יום מקוצר = מלא)';
       }
     } else {
-      dayNote = 'יום רגיל — 8 שעות';
+      dayNote = dow === 5 ? 'שישי — לתקן בלבד' : 'יום רגיל — 8 שעות';
     }
 
-    potential += potentialDay;
+    // POTENTIAL: Sun-Thu only (Friday never adds to potential; that's the rule)
+    if (dow !== 5) {
+      potential += potentialDay;
+    }
 
-    // Teken: only for user's work days
+    // TEKEN: user's checked work days, including Friday if checked
     if (dow in workDays) {
       const regularHours = workDays[dow];
       const tekenHours = regularHours * tekenMultiplier;
       teken += tekenHours;
-      if (tekenMultiplier !== 1 && tekenMultiplier !== 0) {
+      if (dow === 5) {
+        dayNote =
+          (holiday ? holiday.name + ' (שישי)' : 'שישי') +
+          ` — תקן בלבד: ${tekenHours.toFixed(2)} (לא לפוטנציאלי)`;
+      } else if (tekenMultiplier !== 1 && tekenMultiplier !== 0) {
         dayNote += ` | תקן: ${tekenHours.toFixed(2)}`;
       } else if (tekenMultiplier === 1) {
         dayNote += ` | תקן: ${regularHours}`;
       }
-      breakdown.push(`<div style="color:#93c5fd;">${dayLabel} — ${dayNote} ✓</div>`);
-    } else {
+      const color = dow === 5 ? '#fde047' : '#93c5fd';
+      breakdown.push(`<div style="color:${color};">${dayLabel} — ${dayNote} ✓</div>`);
+    } else if (dow !== 5) {
+      // Sun-Thu non-work days: show in breakdown (potential still counts)
       breakdown.push(`<div>${dayLabel} — ${dayNote}</div>`);
     }
+    // Fridays not worked: silently skipped (matches old behavior pre-Friday-support)
   }
 
   document.getElementById('hr_potential').textContent = potential + ' שעות';
   document.getElementById('hr_teken').textContent = teken.toFixed(2) + ' שעות';
   document.getElementById('dayBreakdown').innerHTML = breakdown.join('');
 
-  // Save hours tab state
+  // Save hours tab state (Sun=0 through Fri=5)
   try {
     const hdata = { month: monthVal, days: {} };
-    for (let i = 0; i <= 4; i++) {
+    for (let i = 0; i <= 5; i++) {
       hdata.days[i] = {
         checked: document.getElementById('chk_day' + i).checked,
         hrs: document.getElementById('hrs_day' + i).value,
@@ -1047,7 +1060,7 @@ function syncMonthAndGoToHours() {
     const hdata = JSON.parse(raw);
     if (hdata.month) document.getElementById('hoursMonth').value = hdata.month;
     if (hdata.days) {
-      for (let i = 0; i <= 4; i++) {
+      for (let i = 0; i <= 5; i++) {
         if (hdata.days[i]) {
           document.getElementById('chk_day' + i).checked = !!hdata.days[i].checked;
           document.getElementById('hrs_day' + i).value = hdata.days[i].hrs || '';
