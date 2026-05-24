@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const APP_URL = 'https://allisonecalt-sudo.github.io/premiotAllison/';
+const APP_URL = 'https://allisonecalt-sudo.github.io/premiotAllison-v2/';
 
 test('page loads successfully', async ({ page }) => {
   await page.goto(APP_URL, { waitUntil: 'networkidle' });
