@@ -683,10 +683,10 @@ function calc() {
   document.getElementById('r_total_sticky').textContent = fmtILS(totalPremium);
   const stickyPctVal = totalCeiling > 0 ? Math.min((totalPremium / totalCeiling) * 100, 100) : 0;
   // Status palette: warning/danger reserved for actual signals; default to
-  // the single forest-green accent. When there's no data yet (totalCeiling
-  // is zero), don't shout — render neutral text-color so a fresh page isn't
-  // visually "in danger."
-  const hasData = totalCeiling > 0;
+  // the single forest-green accent. When there's no cap yet OR no premium
+  // recorded yet, render neutral text — a quiet ₪0.00 doesn't deserve
+  // alarm-red on a fresh page.
+  const hasData = totalCeiling > 0 && totalPremium > 0;
   const stickyColor = !hasData
     ? '#1a1915'
     : stickyPctVal >= 75
@@ -719,6 +719,7 @@ function calc() {
       : progressPct >= 40
         ? '#b5621a'
         : '#c0392b';
+  // (hasData defined above in sticky-result block — premium > 0 AND cap > 0)
 
   document.getElementById('takaraProgress').innerHTML =
     totalCeiling > 0
