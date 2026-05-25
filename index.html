@@ -104,59 +104,18 @@
             ></select>
           </div>
 
-          <div class="section-title">
-            <span>📋 ימי עבודה ושעות</span>
-            <div class="line"></div>
-          </div>
-          <div style="font-size: 11px; color: var(--muted); margin-bottom: 8px">
-            סמני את הימים שבהם את עובדת והכניסי שעות ליום
+          <div style="font-size: 11px; color: var(--muted); margin: 4px 0 12px">
+            סמני לכל מרפאה את הימים והשעות שלך — שעות שונות לכל מרפאה
           </div>
 
-          <div id="dayInputs"></div>
+          <!-- Per-clinic day-grid sections, rendered by renderHoursClinics() -->
+          <div id="clinicHoursContainer"></div>
 
-          <div class="section-title">
-            <span>📊 תוצאות</span>
-            <div class="line"></div>
+          <div style="margin-top: 14px">
+            <button onclick="applyAllHoursToCalc()" class="cta-primary">
+              העבר הכל למחשבון הפרמיה ←
+            </button>
           </div>
-
-          <div class="result-row accent">
-            <span class="rlabel">שעות פוטנציאליות (משרה מלאה)</span>
-            <span class="rvalue" id="hr_potential">—</span>
-          </div>
-          <div class="result-row accent">
-            <span class="rlabel">שעות תקן (לפי המשרה שלך)</span>
-            <span class="rvalue" id="hr_teken">—</span>
-          </div>
-
-          <div style="margin-top: 12px">
-            <div id="applyClinicWrap" style="display: none; margin-bottom: 8px" class="input-row">
-              <label>החל על מרפאה</label>
-              <select
-                id="applyClinic"
-                style="
-                  width: 160px;
-                  padding: 6px 8px;
-                  border-radius: 6px;
-                  border: 1px solid var(--border-strong);
-                  background: var(--surface);
-                  color: var(--text);
-                  font-size: 13px;
-                  font-weight: 600;
-                  outline: none;
-                  font-family: inherit;
-                  direction: rtl;
-                  cursor: pointer;
-                "
-              ></select>
-            </div>
-            <button onclick="applyHoursToCalc()" class="cta-primary">העבר למחשבון הפרמיה ←</button>
-          </div>
-
-          <div class="section-title">
-            <span>📅 פירוט ימים</span>
-            <div class="line"></div>
-          </div>
-          <div id="dayBreakdown" style="font-size: 12px; color: var(--muted); line-height: 2"></div>
         </div>
       </div>
     </div>
@@ -413,6 +372,36 @@
       </div>
     </div>
     <!-- end panel-calc -->
+
+    <!-- Per-clinic hours block template (Hours tab) -->
+    <template id="clinic-hours-template">
+      <div class="clinic-hours-card" data-hours-card>
+        <div class="clinic-hours-header">
+          <span class="ch-icon">📋</span>
+          <span class="ch-name" data-hours-name>מרפאה</span>
+          <span class="ch-pill" data-hours-pill>שעות לפי המרפאה הזו</span>
+        </div>
+        <div class="clinic-hours-body">
+          <div class="day-grid" data-day-grid></div>
+
+          <div class="hours-readouts">
+            <div class="result-row accent" style="background: none; border: none; padding: 4px 0">
+              <span class="rlabel">שעות פוטנציאליות (משרה מלאה)</span>
+              <span class="rvalue" data-readout-potential>—</span>
+            </div>
+            <div class="result-row accent" style="background: none; border: none; padding: 4px 0">
+              <span class="rlabel">שעות תקן (לפי המשרה שלך)</span>
+              <span class="rvalue" data-readout-teken>—</span>
+            </div>
+          </div>
+
+          <details class="hours-breakdown">
+            <summary>פירוט ימים</summary>
+            <div data-readout-breakdown></div>
+          </details>
+        </div>
+      </div>
+    </template>
 
     <!-- Clinic block template -->
     <template id="clinic-template">

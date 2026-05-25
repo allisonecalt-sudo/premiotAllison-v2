@@ -224,6 +224,7 @@ function undoFields() {
   else setVetek(false, true);
   clinics = snap.clinics.map((c) => ({ ...c }));
   renderClinics();
+  renderHoursClinics();
   updateUndoBtn();
   calc();
 }
@@ -380,7 +381,11 @@ function renderClinics() {
       c.name = nameInput.value;
       lastEditedClinicId = c.id;
       saveToStorage();
-      updateApplyClinicDropdown();
+      // Keep Hours-tab section labels in sync with calc-tab clinic names
+      const hoursName = document.querySelector(
+        `[data-hours-card][data-hours-clinic-id="${c.id}"] [data-hours-name]`,
+      );
+      if (hoursName) hoursName.textContent = c.name || 'מרפאה';
       updateChips();
     });
     nameInput.addEventListener('focus', saveUndoSnapshot);
@@ -399,9 +404,16 @@ function renderClinics() {
     deleteBtn.addEventListener('click', () => {
       if (clinics.length <= 1) return;
       saveUndoSnapshot();
-      clinics = clinics.filter((cc) => cc.id !== c.id);
-      if (lastEditedClinicId === c.id) lastEditedClinicId = null;
+      const removedId = c.id;
+      clinics = clinics.filter((cc) => cc.id !== removedId);
+      if (lastEditedClinicId === removedId) lastEditedClinicId = null;
+      // Drop the clinic's Hours-tab section data too
+      if (hoursState.byClinic[removedId]) {
+        delete hoursState.byClinic[removedId];
+        saveHoursState();
+      }
       renderClinics();
+      renderHoursClinics();
       calc();
     });
 
@@ -424,8 +436,6 @@ function renderClinics() {
       if (card) card.classList.toggle('expanded', c.expanded);
     });
   }
-
-  updateApplyClinicDropdown();
 }
 
 function onClinicInput(inputEl) {
@@ -449,25 +459,9 @@ function addClinic() {
   clinics.push(newC);
   lastEditedClinicId = newC.id;
   renderClinics();
+  // New clinic gets its own Hours-tab section automatically
+  renderHoursClinics();
   calc();
-}
-
-function updateApplyClinicDropdown() {
-  const wrap = document.getElementById('applyClinicWrap');
-  const sel = document.getElementById('applyClinic');
-  if (!wrap || !sel) return;
-  if (clinics.length > 1) {
-    wrap.style.display = '';
-    sel.innerHTML = '';
-    clinics.forEach((c, i) => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name || 'מרפאה ' + (i + 1);
-      sel.appendChild(opt);
-    });
-  } else {
-    wrap.style.display = 'none';
-  }
 }
 
 // ---- SHARED STRIP LOCK ----
@@ -1014,35 +1008,22 @@ function resetFields() {
   lastEditedClinicId = clinics[0].id;
   detailAutoOpened = false;
 
-  // Clear hours-tab UI (checkboxes + hour inputs)
-  try {
-    for (let i = 0; i <= 5; i++) {
-      const chk = document.getElementById('chk_day' + i);
-      const inp = document.getElementById('hrs_day' + i);
-      if (chk) chk.checked = false;
-      if (inp) inp.value = '';
-    }
-    const potEl = document.getElementById('hr_potential');
-    const tekEl = document.getElementById('hr_teken');
-    if (potEl) potEl.textContent = '—';
-    if (tekEl) tekEl.textContent = '—';
-    const breakdownEl = document.getElementById('dayBreakdown');
-    if (breakdownEl) breakdownEl.innerHTML = '';
-  } catch (e) {
-    /* ignore */
-  }
+  // Clear hours state (per-clinic day-grids)
+  hoursState = { month: null, byClinic: {} };
 
   // Wipe ALL persisted state
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_KEY);
-    localStorage.removeItem('premiot_hours');
+    localStorage.removeItem(HOURS_KEY_V2);
+    localStorage.removeItem(HOURS_KEY_LEGACY);
     localStorage.removeItem('premiot_last_month_total');
   } catch (e) {
     /* ignore */
   }
 
   renderClinics();
+  renderHoursClinics();
   calc();
   showToast('אופס — חזרנו למצב ברירת מחדל');
 }
@@ -1218,7 +1199,17 @@ function switchTab(tab) {
   document.getElementById('panel-hours').style.display = tab === 'hours' ? '' : 'none';
   document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
   document.getElementById('tab-hours').classList.toggle('active', tab === 'hours');
-  if (tab === 'hours') calcHours();
+  if (tab === 'hours') {
+    // Re-render hours sections in case clinics were added/removed/renamed
+    // since the last time we visited this tab.
+    const container = document.getElementById('clinicHoursContainer');
+    const liveCount = container ? container.querySelectorAll('[data-hours-card]').length : 0;
+    if (liveCount !== clinics.length) {
+      renderHoursClinics();
+    } else {
+      calcHours();
+    }
+  }
 }
 
 // ---- HEBREW HOLIDAY CALENDAR 2026-2027 ----
@@ -1325,48 +1316,168 @@ const DAY_NAMES_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
   }
 })();
 
-// Day input checkboxes
-(function () {
-  const container = document.getElementById('dayInputs');
-  const days = [
-    { idx: 0, name: 'א׳ (ראשון)', id: 'day0' },
-    { idx: 1, name: 'ב׳ (שני)', id: 'day1' },
-    { idx: 2, name: 'ג׳ (שלישי)', id: 'day2' },
-    { idx: 3, name: 'ד׳ (רביעי)', id: 'day3' },
-    { idx: 4, name: 'ה׳ (חמישי)', id: 'day4' },
-    { idx: 5, name: 'ו׳ (שישי) — לתקן בלבד', id: 'day5' },
-  ];
-  days.forEach((d) => {
-    const row = document.createElement('div');
-    row.className = 'input-row';
-    row.innerHTML = `
-      <label style="display:flex; align-items:center; gap:8px;">
-        <input type="checkbox" id="chk_${d.id}" onchange="calcHours()" style="width:18px; height:18px; accent-color:#2d6a4f;">
-        <span style="font-size:13px; color:var(--text);">${d.name}</span>
-      </label>
-      <span class="unit">שעות</span>
-      <input type="number" inputmode="decimal" id="hrs_${d.id}" value="" placeholder="0" step="0.5" lang="en" autocomplete="off" oninput="calcHours()">
-    `;
-    container.appendChild(row);
-  });
-})();
+// ---- HOURS TAB — PER-CLINIC DAY-GRID SECTIONS ----
+// Each clinic gets its own labeled day-grid card. The shared month picker
+// at the top applies to all. Per-clinic days/hours are stored separately
+// from the calc-tab clinic record so users can experiment without affecting
+// what's already been applied to the calculator.
+//
+// Storage shape (key = premiot_hours_v2):
+//   { month: "YYYY-MM", byClinic: { [clinicId]: { days: { 0: {checked,hrs}, ... } } } }
+const HOURS_KEY_V2 = 'premiot_hours_v2';
+const HOURS_KEY_LEGACY = 'premiot_hours';
+let hoursState = { month: null, byClinic: {} };
+const DAY_DEFS = [
+  { idx: 0, name: 'א׳ (ראשון)' },
+  { idx: 1, name: 'ב׳ (שני)' },
+  { idx: 2, name: 'ג׳ (שלישי)' },
+  { idx: 3, name: 'ד׳ (רביעי)' },
+  { idx: 4, name: 'ה׳ (חמישי)' },
+  { idx: 5, name: 'ו׳ (שישי) — לתקן בלבד' },
+];
 
-function calcHours() {
-  const monthVal = document.getElementById('hoursMonth').value;
+function getClinicHoursDays(clinicId) {
+  if (!hoursState.byClinic[clinicId]) {
+    hoursState.byClinic[clinicId] = { days: {} };
+  }
+  return hoursState.byClinic[clinicId].days;
+}
+
+function saveHoursState() {
+  try {
+    hoursState.month = document.getElementById('hoursMonth').value || hoursState.month;
+    localStorage.setItem(HOURS_KEY_V2, JSON.stringify(hoursState));
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function loadHoursState() {
+  try {
+    const raw = localStorage.getItem(HOURS_KEY_V2);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        hoursState.month = parsed.month || null;
+        hoursState.byClinic = parsed.byClinic || {};
+      }
+      return;
+    }
+    // Migrate legacy single-grid format → clinic-1's slot
+    const legacy = localStorage.getItem(HOURS_KEY_LEGACY);
+    if (legacy) {
+      const old = JSON.parse(legacy);
+      hoursState.month = old.month || null;
+      // We may not have clinics loaded yet — defer assignment to renderHoursClinics
+      hoursState._legacyDays = old.days || null;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+// Build per-clinic day-grid card. Called every time the clinic list changes
+// OR when switching to the Hours tab, so add/remove on calc tab syncs over.
+function renderHoursClinics() {
+  const container = document.getElementById('clinicHoursContainer');
+  const template = document.getElementById('clinic-hours-template');
+  if (!container || !template) return;
+  container.innerHTML = '';
+
+  // If migrating from legacy single-grid, hand it to clinic-1
+  if (hoursState._legacyDays && clinics.length > 0) {
+    const firstId = clinics[0].id;
+    if (
+      !hoursState.byClinic[firstId] ||
+      Object.keys(hoursState.byClinic[firstId].days).length === 0
+    ) {
+      hoursState.byClinic[firstId] = { days: hoursState._legacyDays };
+    }
+    delete hoursState._legacyDays;
+    try {
+      localStorage.removeItem(HOURS_KEY_LEGACY);
+    } catch (e) {
+      /* ignore */
+    }
+    saveHoursState();
+  }
+
+  // Garbage-collect orphan entries (clinic was deleted on calc tab)
+  const liveIds = new Set(clinics.map((c) => c.id));
+  Object.keys(hoursState.byClinic).forEach((cid) => {
+    if (!liveIds.has(cid)) delete hoursState.byClinic[cid];
+  });
+
+  clinics.forEach((c, cidx) => {
+    const node = template.content.cloneNode(true);
+    const card = node.querySelector('[data-hours-card]');
+    card.setAttribute('data-hours-clinic-id', c.id);
+    const nameEl = card.querySelector('[data-hours-name]');
+    nameEl.textContent = c.name || 'מרפאה ' + (cidx + 1);
+    const pillEl = card.querySelector('[data-hours-pill]');
+    pillEl.textContent = 'שעות לפי המרפאה הזו';
+
+    const dayGrid = card.querySelector('[data-day-grid]');
+    const days = getClinicHoursDays(c.id);
+    DAY_DEFS.forEach((d) => {
+      const saved = days[d.idx] || {};
+      const row = document.createElement('div');
+      row.className = 'input-row';
+      const chkId = `chk_${c.id}_d${d.idx}`;
+      const hrsId = `hrs_${c.id}_d${d.idx}`;
+      row.innerHTML = `
+        <label style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="${chkId}" data-clinic-id="${c.id}" data-day-idx="${d.idx}" data-kind="chk" style="width:18px; height:18px; accent-color:#2d6a4f;" ${saved.checked ? 'checked' : ''}>
+          <span style="font-size:13px; color:var(--text);">${d.name}</span>
+        </label>
+        <span class="unit">שעות</span>
+        <input type="number" inputmode="decimal" id="${hrsId}" data-clinic-id="${c.id}" data-day-idx="${d.idx}" data-kind="hrs" value="${saved.hrs || ''}" placeholder="0" step="0.5" lang="en" autocomplete="off">
+      `;
+      dayGrid.appendChild(row);
+    });
+
+    container.appendChild(node);
+  });
+
+  // Wire change handlers (delegate at container level)
+  container.oninput = onHoursInput;
+  container.onchange = onHoursInput;
+
+  calcHours();
+}
+
+function onHoursInput(e) {
+  const t = e.target;
+  if (!t || !t.dataset || !t.dataset.clinicId) return;
+  const cid = t.dataset.clinicId;
+  const didx = parseInt(t.dataset.dayIdx, 10);
+  const kind = t.dataset.kind;
+  const days = getClinicHoursDays(cid);
+  if (!days[didx]) days[didx] = { checked: false, hrs: '' };
+  if (kind === 'chk') days[didx].checked = !!t.checked;
+  if (kind === 'hrs') days[didx].hrs = t.value;
+  saveHoursState();
+  calcHours();
+}
+
+// Compute potential + teken for a given (clinic, month). Returns
+// { potential, teken, groups }. Potential is identical across clinics for
+// the same month (calendar baseline) but we display it per-section so the
+// user sees the math both ways.
+function computeHoursForClinic(clinicId, monthVal) {
   const [year, month] = monthVal.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
-
+  const cdays = getClinicHoursDays(clinicId);
   const workDays = {};
   for (let i = 0; i <= 5; i++) {
-    const checked = document.getElementById('chk_day' + i).checked;
-    const hrs = parseFloat(document.getElementById('hrs_day' + i).value) || 0;
-    if (checked && hrs > 0) workDays[i] = hrs;
+    const rec = cdays[i];
+    if (!rec) continue;
+    const hrs = parseFloat(rec.hrs) || 0;
+    if (rec.checked && hrs > 0) workDays[i] = hrs;
   }
 
   let potential = 0;
   let teken = 0;
-
-  // grouped counts
   const groups = {
     regular: { count: 0, hours: 0 },
     erev: { count: 0, hours: 0 },
@@ -1380,7 +1491,6 @@ function calcHours() {
     const dow = date.getDay();
     const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     const holiday = HOLIDAYS[dateStr];
-
     if (dow === 6) continue;
 
     let potentialDay = 8;
@@ -1407,16 +1517,12 @@ function calcHours() {
       }
     }
 
-    if (dow !== 5) {
-      potential += potentialDay;
-    }
+    if (dow !== 5) potential += potentialDay;
 
     if (dow in workDays) {
       const regularHours = workDays[dow];
       const tekenHours = regularHours * tekenMultiplier;
       teken += tekenHours;
-
-      // group accounting only for Sun-Thu (Friday handled separately if needed)
       if (dow !== 5) {
         if (dayType === 'regular') {
           groups.regular.count += 1;
@@ -1437,48 +1543,54 @@ function calcHours() {
     }
   }
 
-  document.getElementById('hr_potential').textContent = potential + ' שעות';
-  document.getElementById('hr_teken').textContent = teken.toFixed(2) + ' שעות';
+  return { potential, teken, groups };
+}
 
-  // Grouped breakdown
-  const breakdownLines = [];
+function renderHoursBreakdown(groups) {
+  const lines = [];
   if (groups.regular.count > 0) {
-    breakdownLines.push(
+    lines.push(
       `<div>ימי חול: ${groups.regular.count} × ${(groups.regular.hours / groups.regular.count).toFixed(0)} = ${groups.regular.hours.toFixed(1)}ש</div>`,
     );
   }
   if (groups.erev.count > 0) {
-    breakdownLines.push(
+    lines.push(
       `<div>ערב חג: ${groups.erev.count} × ${(groups.erev.hours / groups.erev.count).toFixed(1)} = ${groups.erev.hours.toFixed(1)}ש</div>`,
     );
   }
   if (groups.cholhamoed.count > 0) {
-    breakdownLines.push(
+    lines.push(
       `<div>חול המועד: ${groups.cholhamoed.count} × ${(groups.cholhamoed.hours / groups.cholhamoed.count).toFixed(2)} = ${groups.cholhamoed.hours.toFixed(1)}ש</div>`,
     );
   }
   if (groups.chag > 0) {
-    breakdownLines.push(`<div>חג: ${groups.chag} (לא נכלל)</div>`);
+    lines.push(`<div>חג: ${groups.chag} (לא נכלל)</div>`);
   }
   if (groups.mekutzar.count > 0) {
-    breakdownLines.push(
+    lines.push(
       `<div>יום מקוצר: ${groups.mekutzar.count} × ${(groups.mekutzar.hours / groups.mekutzar.count).toFixed(0)} = ${groups.mekutzar.hours.toFixed(1)}ש</div>`,
     );
   }
-  document.getElementById('dayBreakdown').innerHTML = breakdownLines.join('');
+  return lines.join('');
+}
 
-  try {
-    const hdata = { month: monthVal, days: {} };
-    for (let i = 0; i <= 5; i++) {
-      hdata.days[i] = {
-        checked: document.getElementById('chk_day' + i).checked,
-        hrs: document.getElementById('hrs_day' + i).value,
-      };
-    }
-    localStorage.setItem('premiot_hours', JSON.stringify(hdata));
-  } catch (e) {
-    /* ignore */
-  }
+// Recompute and paint all clinic sections. Called on input + month change.
+function calcHours() {
+  const monthVal = document.getElementById('hoursMonth').value;
+  if (!monthVal) return;
+  hoursState.month = monthVal;
+  saveHoursState();
+
+  document.querySelectorAll('[data-hours-card]').forEach((card) => {
+    const cid = card.getAttribute('data-hours-clinic-id');
+    const { potential, teken, groups } = computeHoursForClinic(cid, monthVal);
+    const potEl = card.querySelector('[data-readout-potential]');
+    const tekEl = card.querySelector('[data-readout-teken]');
+    const brkEl = card.querySelector('[data-readout-breakdown]');
+    if (potEl) potEl.textContent = potential + ' שעות';
+    if (tekEl) tekEl.textContent = teken.toFixed(2) + ' שעות';
+    if (brkEl) brkEl.innerHTML = renderHoursBreakdown(groups);
+  });
 }
 
 function flashInput(el) {
@@ -1490,31 +1602,36 @@ function flashInput(el) {
   setTimeout(() => el.classList.remove('flash'), 250);
 }
 
-function applyHoursToCalc() {
-  const pot = document.getElementById('hr_potential').textContent.replace(/[^\d.]/g, '');
-  const tek = document.getElementById('hr_teken').textContent.replace(/[^\d.]/g, '');
-
-  // shared potential
-  const sharedEl = document.getElementById('shaPotential');
-  sharedEl.value = pot;
-  flashInput(sharedEl);
-
-  // Pick clinic: dropdown if multi, else clinic 0
-  let targetClinicId = null;
-  if (clinics.length > 1) {
-    const sel = document.getElementById('applyClinic');
-    targetClinicId = sel ? sel.value : clinics[0].id;
-  } else {
-    targetClinicId = clinics[0].id;
-  }
-  const clinic = clinics.find((c) => c.id === targetClinicId) || clinics[0];
-  clinic.shaTeken = tek;
-  lastEditedClinicId = clinic.id;
-  // expand it
-  clinics.forEach((c) => (c.expanded = c.id === clinic.id));
-
-  // Sync month
+// Push every clinic's per-section teken into its matching calc-tab clinic,
+// plus the shared potential (same calendar baseline for the month) into the
+// shared strip. ONE button → all sections applied at once.
+function applyAllHoursToCalc() {
   const monthVal = document.getElementById('hoursMonth').value;
+  if (!monthVal || clinics.length === 0) return;
+
+  let appliedAny = false;
+  let sharedPotential = 0;
+  clinics.forEach((clinic) => {
+    const { potential, teken } = computeHoursForClinic(clinic.id, monthVal);
+    if (potential > sharedPotential) sharedPotential = potential;
+    // Only apply teken when this clinic has any day data — empty section
+    // shouldn't overwrite a manually-entered teken on calc tab.
+    const cdays = getClinicHoursDays(clinic.id);
+    const hasAny = Object.values(cdays).some((r) => r && r.checked && (parseFloat(r.hrs) || 0) > 0);
+    if (hasAny) {
+      clinic.shaTeken = teken.toFixed(2);
+      appliedAny = true;
+    }
+  });
+
+  // Shared potential
+  if (sharedPotential > 0) {
+    const sharedEl = document.getElementById('shaPotential');
+    sharedEl.value = sharedPotential;
+    flashInput(sharedEl);
+  }
+
+  // Sync month label onto calc tab
   const [y, m] = monthVal.split('-').map(Number);
   const monthNames = [
     'ינואר',
@@ -1549,17 +1666,32 @@ function applyHoursToCalc() {
   }
   document.getElementById('selectedMonthDisplay').textContent = label;
 
-  switchTab('calc');
-  renderClinics();
-  // flash the targeted teken input after render
-  setTimeout(() => {
-    const card = document.querySelector(`[data-clinic-card][data-clinic-id="${clinic.id}"]`);
-    if (card) {
-      const inp = card.querySelector('[data-field="shaTeken"]');
-      flashInput(inp);
+  if (appliedAny) {
+    // Expand first clinic with data
+    const firstWith = clinics.find((c) => parseFloat(c.shaTeken) > 0);
+    if (firstWith) {
+      clinics.forEach((c) => (c.expanded = c.id === firstWith.id));
+      lastEditedClinicId = firstWith.id;
     }
-  }, 50);
-  calc();
+    switchTab('calc');
+    renderClinics();
+    setTimeout(() => {
+      clinics.forEach((c) => {
+        const card = document.querySelector(`[data-clinic-card][data-clinic-id="${c.id}"]`);
+        if (card) flashInput(card.querySelector('[data-field="shaTeken"]'));
+      });
+    }, 50);
+    calc();
+    showToast(`הועברו שעות ל-${clinics.filter((c) => parseFloat(c.shaTeken) > 0).length} מרפאות`);
+  } else {
+    showToast('מלאי שעות לפחות במרפאה אחת');
+  }
+}
+
+// Back-compat: older code paths still call applyHoursToCalc() — route to the
+// new multi-clinic apply.
+function applyHoursToCalc() {
+  applyAllHoursToCalc();
 }
 
 function syncMonthAndGoToHours() {
@@ -1571,28 +1703,25 @@ function syncMonthAndGoToHours() {
 // (Hours tab state is preserved separately in premiot_hours.)
 function goEditHoursForShared() {
   switchTab('hours');
-  showToast('עדכני את הימים והשעות, ואז "העבר למחשבון" ←');
+  showToast('עדכני את הימים והשעות בכל מרפאה, ואז "העבר הכל" ←');
 }
 
-// Per-clinic teken edit-link — select that clinic in the apply-dropdown
-// so when the user hits "העבר למחשבון" it lands in the right place.
+// Per-clinic teken edit-link — jump to hours tab and scroll the matching
+// section into view (each clinic now has its own labeled day-grid section).
 function goEditHoursForClinic(linkEl) {
   const card = linkEl.closest('[data-clinic-card]');
   const cid = card ? card.getAttribute('data-clinic-id') : null;
-  if (cid) {
-    lastEditedClinicId = cid;
-    const sel = document.getElementById('applyClinic');
-    if (sel) {
-      for (let i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].value === cid) {
-          sel.selectedIndex = i;
-          break;
-        }
-      }
-    }
-  }
+  if (cid) lastEditedClinicId = cid;
   switchTab('hours');
-  showToast('עדכני את הימים והשעות, ואז "העבר למחשבון" ←');
+  if (cid) {
+    setTimeout(() => {
+      const target = document.querySelector(`[data-hours-card][data-hours-clinic-id="${cid}"]`);
+      if (target && target.scrollIntoView) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  }
+  showToast('עדכני את הימים והשעות במרפאה הזו, ואז "העבר הכל" ←');
 }
 
 // Show/hide empty-state and from-hours badges based on whether shared
@@ -1631,37 +1760,32 @@ function updateHoursFirstUI() {
   });
 }
 
-// Restore hours tab state
-(function () {
-  try {
-    const raw = localStorage.getItem('premiot_hours');
-    if (!raw) return;
-    const hdata = JSON.parse(raw);
-    if (hdata.month) document.getElementById('hoursMonth').value = hdata.month;
-    if (hdata.days) {
-      for (let i = 0; i <= 5; i++) {
-        if (hdata.days[i]) {
-          document.getElementById('chk_day' + i).checked = !!hdata.days[i].checked;
-          document.getElementById('hrs_day' + i).value = hdata.days[i].hrs || '';
-        }
-      }
-    }
-  } catch (e) {
-    /* ignore */
-  }
-})();
-
 // ---- BOOTSTRAP ----
 // Detect "fresh load" BEFORE loadFromStorage migrates anything.
 const _freshLoad =
   !localStorage.getItem(STORAGE_KEY) &&
   !localStorage.getItem(LEGACY_KEY) &&
-  !localStorage.getItem('premiot_hours');
+  !localStorage.getItem(HOURS_KEY_V2) &&
+  !localStorage.getItem(HOURS_KEY_LEGACY);
 loadFromStorage();
+loadHoursState();
 if (clinics.length === 0) {
   clinics = [newClinicObj('מרפאה 1')];
 }
 renderClinics();
+// Restore month selector to last-used value before the first Hours render
+if (hoursState.month) {
+  const hm = document.getElementById('hoursMonth');
+  if (hm) {
+    for (let i = 0; i < hm.options.length; i++) {
+      if (hm.options[i].value === hoursState.month) {
+        hm.selectedIndex = i;
+        break;
+      }
+    }
+  }
+}
+renderHoursClinics();
 maybeLockShared();
 calc();
 
