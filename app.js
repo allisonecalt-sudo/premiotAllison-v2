@@ -36,6 +36,8 @@ function set(id, val, unit) {
 
 // ---- TOOLTIPS ----
 const TIPS = {
+  ntNothing:
+    'שעות עבודה שלא נרשמה בהן תפוקה (שעות עבודה פחות תפוקות).\nכל עוד הממוצע מספיק כדי להגיע לתקרה — הפרמיה נשארת מקסימלית.\nהמספר מתעדכן אוטומטית כשמשנים שלט, היעדרויות או תפוקות.',
   tarif: 'תעריף הסכם קבוע: 40.49 ₪ לשעה לטיפול. לא ניתן לשינוי.',
   takara:
     'התקרה המוצגת היא למשרה מלאה (100%):\n• עובדת רגילה: ₪5,400\n• ותיקה: ₪5,838.25\n\nהתקרה בפועל מחושבת לפי אחוז המשרה החודשי לכל מרפאה:\nתקרה בפועל למרפאה = (שעות תקן + שעות נוספות + היעדרות מזכה במרפאה ÷ שעות פוטנציאליות משותף) × תקרה מלאה',
@@ -1442,21 +1444,46 @@ function calcNoTfuka() {
 
   let html = '';
 
-  // THE question (Allison, 2026-06-10: "how many hours can I do nothing") —
-  // with N tfukot at makdam 2, full premia rate holds while מכנה ≤ N, so up to
-  // (present − N) hours can carry zero treatments (logged as שלט). e.g. 68.50
-  // present hours with 63 tfukot → 5.5 hours of nothing, still full rate.
+  // THE question (Allison, 2026-06-10: "how many hours could do nothing —
+  // not shalat, not vacation, not sick, not tfuka, LITERALLY nothing — and
+  // still hit premium"). These hours stay inside the מכנה and dilute the
+  // average; because the premia is CAPPED at the ceiling, the average only
+  // needs to be high enough to reach the cap, not the full 2.0. Her March:
+  // 140 weighted, cap 3132, pay-hours 98.15 → needed avg 1.79 → מכנה can be
+  // ~78; she treated ~70 → ~8 hours of pure nothing ("77−69").
   if (expected > 0) {
-    const fullNothingRaw = present - (expected * makdam) / 2;
-    const fullNothing = Math.max(0, Math.min(fullNothingRaw, maxShalat));
-    const cappedBy50 = fullNothingRaw > maxShalat;
+    const weighted = expected * makdam;
+    const fullCeiling = v('takara');
+    const potential = v('shaPotential');
+    let maxMecane;
+    let capNote;
+    if (potential > 0 && present > 0 && tarif > 0) {
+      // Ceiling exactly as Clalit computes it: integer-rounded % × full cap
+      const mishraHours = Math.max(0, teken - loMazaka + nosafot);
+      const mishraPct = Math.round((mishraHours / potential) * 100) / 100;
+      const cap = mishraPct * fullCeiling;
+      const capRate = Math.min(1, cap / (present * tarif));
+      maxMecane = weighted / (capRate + 1);
+      capNote = `ועדיין מגיעים לתקרה (${fmtILS0(cap)})`;
+    } else {
+      // No potential synced yet — fall back to the full-rate bar (avg 2.0)
+      maxMecane = weighted / 2;
+      capNote = 'ועדיין קצב פרמיה מלא (מלאי שעות פוטנציאליות לחישוב מול התקרה)';
+    }
+    // Her formula (2026-06-10): nothing-hours = שעות עבודה − תפוקות.
+    // ~1 raw tfuka ≈ 1 treating hour, so what's left of the מכנה is hours
+    // where literally nothing happened — no shalat, no reporting, nothing.
+    // The verdict line says whether that's still inside the cap allowance.
+    const nothingNow = Math.max(0, mecane - expected);
+    const within = mecane <= maxMecane + 0.05;
+    const slack = maxMecane - mecane;
     html += `<div class="total-box" style="margin-bottom:12px;">
-      <div class="tlabel">עם ${expected} תפוקות — שעות שיכולות להישאר ללא טיפולים</div>
-      <div class="tamount">${fullNothing.toFixed(1)} שעות</div>
+      <div class="tlabel">שעות ללא תפוקות <button class="tip-btn" data-tip="ntNothing">?</button></div>
+      <div class="tamount">${nothingNow.toFixed(1)} שעות</div>
       <div class="tsub">${
-        cappedBy50
-          ? `מוגבל בסף ה-50% (${maxShalat.toFixed(1)} שעות) — מעבר לזה אין זכאות לפרמיה`
-          : 'נרשמות כשל"ט — והפרמיה נשארת מלאה'
+        within
+          ? `${capNote} ✓${slack > 0.1 ? ` — יש מקום לעוד ${slack.toFixed(1)} שעות כאלה` : ''}`
+          : `יותר מדי — הפרמיה תרד מתחת לתקרה. עודף של ${(mecane - maxMecane).toFixed(1)} שעות: עוד תפוקות או העברה לשלט`
       }</div>
     </div>`;
   }
