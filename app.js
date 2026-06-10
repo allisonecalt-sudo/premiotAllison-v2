@@ -738,7 +738,8 @@ function calc() {
   document.getElementById('stickyProgressBar').style.width = stickyPctVal + '%';
   document.getElementById('stickyProgressBar').style.background = stickyColor;
   document.getElementById('r_total_sticky').style.color = stickyColor;
-  document.getElementById('stickyPct').textContent = stickyPctVal.toFixed(0) + '%';
+  // Labeled so it can't be misread as אחוז משרה (Allison, 2026-06-10)
+  document.getElementById('stickyPct').textContent = stickyPctVal.toFixed(0) + '% מהתקרה';
   document.getElementById('stickyTakara').textContent =
     'תקרה: ' + (totalCeiling > 0 ? fmtILS0(totalCeiling) : '—');
   // On a fresh page (no input yet) show "—", not "0.000" — a hard zero reads
