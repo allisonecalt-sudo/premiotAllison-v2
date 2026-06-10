@@ -17,7 +17,9 @@
         href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;800&display=swap"
         rel="stylesheet"
     /></noscript>
-    <link rel="stylesheet" href="styles.css" />
+    <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
+         old version and changes look like they never shipped). -->
+    <link rel="stylesheet" href="styles.css?v=20260610b" />
   </head>
   <body>
     <noscript>
@@ -60,7 +62,7 @@
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
       <p>חישוב פרמיית עבודה ופרמיית העדרות</p>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 10.6 ב׳</div>
     </div>
 
     <!-- Tab Navigation -->
@@ -83,128 +85,137 @@
       <div class="container">
         <div style="max-width: 720px">
           <div class="section-title">
-            <span>כמה שעות יכולות להיות בלי תפוקה?</span>
+            <span>כמה שעות לא צריכות טיפולים?</span>
             <div class="line"></div>
           </div>
           <div style="font-size: 11px; color: var(--muted); margin: 4px 0 12px">
-            הזיני שעות והורדות — והמחשבון יגיד כמה שעות נמדדות באמת וכמה תפוקות צריך
+            <span id="ntSyncNote" style="display: none">מסונכרן עם המחשבון ✓ · </span>השעות והתפוקות
+            נמשכות אוטומטית — אפשר לערוך למטה
           </div>
 
-          <!-- Linked to the main calculator: prefills from the clinics' data
-               (which itself comes from the hours-tab day grid). Editable —
-               the what-if game stays possible. -->
-          <div
-            id="ntSyncRow"
-            style="
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              margin: 0 0 12px;
-              font-size: 11px;
-              color: var(--muted);
-            "
-          >
-            <span id="ntSyncNote" style="display: none">נמשך מטאב המחשבון — אפשר לערוך</span>
-            <button type="button" class="edit-from-hours" onclick="ntPullFromCalc(true)">
-              ← משכי מהמחשבון
+          <!-- THE answer first — everything below is supporting detail -->
+          <div id="noTfukaResults" style="margin-bottom: 14px"></div>
+
+          <!-- Inputs, synced from the calculator on every visit; collapsed
+               because most months nothing needs touching -->
+          <div style="margin-top: 8px">
+            <button onclick="toggleSection('ntInputs')" class="disclosure-btn">
+              <span>✏️ עריכת הנתונים</span>
+              <span id="arrow_ntInputs" class="arrow">▼</span>
             </button>
+            <div id="ntInputs" class="disclosure-panel">
+              <div class="input-row">
+                <label>שעות תקן בחודש</label>
+                <span class="unit">שעות</span>
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  id="nt_teken"
+                  placeholder="0"
+                  step="0.5"
+                  min="0"
+                  lang="en"
+                  autocomplete="off"
+                  oninput="calcNoTfuka()"
+                />
+              </div>
+              <div class="input-row">
+                <label>
+                  <button class="tip-btn" data-tip="shalet">?</button>
+                  שעות שלא לטיפולים (שלט)
+                </label>
+                <span class="unit">שעות</span>
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  id="nt_shalat"
+                  placeholder="0"
+                  step="0.5"
+                  min="0"
+                  lang="en"
+                  autocomplete="off"
+                  oninput="calcNoTfuka()"
+                />
+              </div>
+              <div class="input-row">
+                <label>היעדרות מזכה (מחלה, חופש)</label>
+                <span class="unit">שעות</span>
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  id="nt_mazaka"
+                  placeholder="0"
+                  step="0.5"
+                  min="0"
+                  lang="en"
+                  autocomplete="off"
+                  oninput="calcNoTfuka()"
+                />
+              </div>
+              <div class="input-row">
+                <label>היעדרות לא מזכה</label>
+                <span class="unit">שעות</span>
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  id="nt_loMazaka"
+                  placeholder="0"
+                  step="0.5"
+                  min="0"
+                  lang="en"
+                  autocomplete="off"
+                  oninput="calcNoTfuka()"
+                />
+              </div>
+              <div class="input-row">
+                <label>שעות נוספות (אם יש)</label>
+                <span class="unit">שעות</span>
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  id="nt_nosafot"
+                  placeholder="0"
+                  step="0.5"
+                  min="0"
+                  lang="en"
+                  autocomplete="off"
+                  oninput="calcNoTfuka()"
+                />
+              </div>
+              <div class="input-row">
+                <label>תפוקות צפויות החודש</label>
+                <span class="unit">תפוקות</span>
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  id="nt_tifukot"
+                  placeholder="0"
+                  step="1"
+                  min="0"
+                  lang="en"
+                  autocomplete="off"
+                  oninput="calcNoTfuka()"
+                />
+              </div>
+            </div>
           </div>
 
-          <div class="input-row">
-            <label>שעות תקן בחודש</label>
-            <span class="unit">שעות</span>
-            <input
-              type="number"
-              inputmode="decimal"
-              id="nt_teken"
-              placeholder="0"
-              step="0.5"
-              min="0"
-              lang="en"
-              autocomplete="off"
-              oninput="calcNoTfuka()"
-            />
+          <!-- The v1-style month reference she likes: every day, with holidays -->
+          <div class="section-title" style="margin-top: 18px">
+            <span>📅 פירוט החודש</span>
+            <div class="line"></div>
           </div>
-          <div class="input-row">
-            <label>
-              <button class="tip-btn" data-tip="shalet">?</button>
-              שעות שלא לטיפולים (שלט)
-            </label>
-            <span class="unit">שעות</span>
-            <input
-              type="number"
-              inputmode="decimal"
-              id="nt_shalat"
-              placeholder="0"
-              step="0.5"
-              min="0"
-              lang="en"
-              autocomplete="off"
-              oninput="calcNoTfuka()"
-            />
-          </div>
-          <div class="input-row">
-            <label>היעדרות מזכה (מחלה, חופש)</label>
-            <span class="unit">שעות</span>
-            <input
-              type="number"
-              inputmode="decimal"
-              id="nt_mazaka"
-              placeholder="0"
-              step="0.5"
-              min="0"
-              lang="en"
-              autocomplete="off"
-              oninput="calcNoTfuka()"
-            />
-          </div>
-          <div class="input-row">
-            <label>היעדרות לא מזכה</label>
-            <span class="unit">שעות</span>
-            <input
-              type="number"
-              inputmode="decimal"
-              id="nt_loMazaka"
-              placeholder="0"
-              step="0.5"
-              min="0"
-              lang="en"
-              autocomplete="off"
-              oninput="calcNoTfuka()"
-            />
-          </div>
-          <div class="input-row">
-            <label>שעות נוספות (אם יש)</label>
-            <span class="unit">שעות</span>
-            <input
-              type="number"
-              inputmode="decimal"
-              id="nt_nosafot"
-              placeholder="0"
-              step="0.5"
-              min="0"
-              lang="en"
-              autocomplete="off"
-              oninput="calcNoTfuka()"
-            />
-          </div>
-          <div class="input-row">
-            <label>תפוקות צפויות החודש (רשות)</label>
-            <span class="unit">תפוקות</span>
-            <input
-              type="number"
-              inputmode="decimal"
-              id="nt_tifukot"
-              placeholder="0"
-              step="1"
-              min="0"
-              lang="en"
-              autocomplete="off"
-              oninput="calcNoTfuka()"
-            />
-          </div>
-
-          <div id="noTfukaResults" style="margin-top: 14px"></div>
+          <div
+            id="ntDayReference"
+            style="
+              font-size: 12.5px;
+              line-height: 2;
+              background: var(--surface);
+              border: 1px solid var(--border);
+              border-radius: 10px;
+              padding: 10px 14px;
+            "
+          ></div>
         </div>
       </div>
     </div>
@@ -782,6 +793,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js"></script>
+    <script src="app.js?v=20260610b"></script>
   </body>
 </html>

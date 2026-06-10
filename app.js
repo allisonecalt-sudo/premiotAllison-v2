@@ -967,8 +967,8 @@ function maybeAutoOpenDetail(shouldOpen) {
   if (!shouldOpen || detailAutoOpened) return;
   const el = document.getElementById('detailPremia');
   const arrow = document.getElementById('arrow_detailPremia');
-  if (el && el.style.display === 'none') {
-    el.style.display = '';
+  if (el && getComputedStyle(el).display === 'none') {
+    el.style.display = 'block';
     if (arrow) arrow.style.transform = 'rotate(180deg)';
   }
   detailAutoOpened = true;
@@ -1287,37 +1287,31 @@ function downloadExcel() {
 
 // ---- COLLAPSIBLES ----
 function toggleSection(id) {
+  // .disclosure-panel is hidden by CLASS, so inline '' still means hidden —
+  // toggle against the computed style and set an explicit value. (The old
+  // ''/'none' toggle could never open a panel: both states rendered hidden.)
   const el = document.getElementById(id);
   const arrow = document.getElementById('arrow_' + id);
   if (!el) return;
-  if (el.style.display === 'none' || el.style.display === '') {
-    el.style.display = el.style.display === 'none' ? '' : 'none';
-    // explicit handling
-    if (el.style.display === '') {
-      if (arrow) arrow.style.transform = 'rotate(180deg)';
-    } else {
-      if (arrow) arrow.style.transform = '';
-    }
-  } else {
-    el.style.display = 'none';
-    if (arrow) arrow.style.transform = '';
-  }
+  const isOpen = getComputedStyle(el).display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 // ---- NO-TFUKA PLANNER (Hagit mode) ----
-// Linked to the main calculator: prefills its fields from the clinics' summed
-// data (which itself flows from the hours-tab day grid). force=true (the
-// button) overwrites; force=false (tab switch) fills only when all empty.
-function ntPullFromCalc(force) {
+// SYNCED with the main calculator (Allison 2026-06-10: "I want the page...
+// to be synced with the regular page"): every switch onto the tab re-pulls
+// all fields — including tfukot — from the clinics' summed data. Fields stay
+// editable for what-if, but leaving and returning re-syncs.
+function ntPullFromCalc() {
   const map = {
     nt_teken: 'shaTeken',
     nt_nosafot: 'shaNosfot',
     nt_shalat: 'shaLaTipulit',
     nt_mazaka: 'headrutMazaka',
     nt_loMazaka: 'headrutLoMazaka',
+    nt_tifukot: 'tifukot',
   };
-  const anyTyped = Object.keys(map).some((id) => v(id) > 0);
-  if (anyTyped && !force) return;
   let pulledAny = false;
   Object.entries(map).forEach(([ntId, field]) => {
     const sum = clinics.reduce((s, c) => s + (parseFloat(c[field]) || 0), 0);
@@ -1328,6 +1322,70 @@ function ntPullFromCalc(force) {
   const note = document.getElementById('ntSyncNote');
   if (note) note.style.display = pulledAny ? '' : 'none';
   calcNoTfuka();
+}
+
+// The v1-style day-by-day month reference Allison asked to bring back
+// (2026-06-10: "all the days of the week with the holidays... I like the
+// reference"). Lists every calendar day of the selected month with its
+// holiday status + potential hours + her combined hours across clinics.
+function renderNtMonthReference() {
+  const out = document.getElementById('ntDayReference');
+  if (!out) return;
+  const monthVal = hoursState.month || document.getElementById('hoursMonth').value;
+  if (!monthVal) {
+    out.innerHTML = '';
+    return;
+  }
+  const [year, month] = monthVal.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  // Merge work hours per weekday across all clinics (same gate as compute:
+  // checked + hrs > 0)
+  const merged = {};
+  clinics.forEach((c) => {
+    const cdays = getClinicHoursDays(c.id);
+    for (let i = 0; i <= 5; i++) {
+      const rec = cdays[i];
+      if (rec && rec.checked && (parseFloat(rec.hrs) || 0) > 0) {
+        merged[i] = (merged[i] || 0) + parseFloat(rec.hrs);
+      }
+    }
+  });
+  const rows = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month - 1, d);
+    const dow = date.getDay();
+    if (dow === 6) continue; // Shabbat — never counted
+    const dateStr = monthVal + '-' + String(d).padStart(2, '0');
+    const holiday = HOLIDAYS[dateStr];
+    let mult = 1;
+    let note = 'יום רגיל — 8 שעות';
+    if (holiday) {
+      if (holiday.type === 'chag' || holiday.type === 'yomAtzmaut') {
+        mult = 0;
+        note = holiday.name + ' — 0 שעות';
+      } else if (holiday.type === 'erev') {
+        mult = 0.5;
+        note = holiday.name + ' — 4 שעות (50%)';
+      } else if (holiday.type === 'cholhamoed') {
+        mult = 0.625;
+        note = holiday.name + ' — 5 שעות (62.5%)';
+      } else if (holiday.type === 'mekutzar') {
+        note = holiday.name + ' — יום מקוצר = מלא';
+      }
+    }
+    if (dow === 5) note += ' (שישי — לתקן בלבד)';
+    const works = dow in merged;
+    let line = `${dayNames[dow]} ${d}/${month} — ${note}`;
+    if (works) {
+      const teken = merged[dow] * mult;
+      line += ` | שלך: ${teken % 1 === 0 ? teken : teken.toFixed(2)} ✓`;
+    }
+    rows.push(
+      `<div style="${works ? 'color:#2d6a4f; font-weight:600;' : 'color:var(--muted);'}">${line}</div>`,
+    );
+  }
+  out.innerHTML = rows.join('');
 }
 
 // Reverse calculator: instead of "treatments in → premia out", the user enters
@@ -1447,7 +1505,10 @@ function switchTab(tab) {
   document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
   document.getElementById('tab-hours').classList.toggle('active', tab === 'hours');
   document.getElementById('tab-notfuka').classList.toggle('active', tab === 'notfuka');
-  if (tab === 'notfuka') ntPullFromCalc(false);
+  if (tab === 'notfuka') {
+    ntPullFromCalc();
+    renderNtMonthReference();
+  }
   if (tab === 'hours') {
     // Re-render hours sections in case clinics were added/removed/renamed
     // since the last time we visited this tab.

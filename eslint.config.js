@@ -28,6 +28,7 @@ module.exports = [
         prompt: 'readonly',
         event: 'readonly',
         requestAnimationFrame: 'readonly',
+        getComputedStyle: 'readonly',
         HTMLElement: 'readonly',
         Event: 'readonly',
         KeyboardEvent: 'readonly',
