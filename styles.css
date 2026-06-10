@@ -61,7 +61,7 @@ body {
 .header {
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-  padding: 24px 20px 18px;
+  padding: 18px 20px 14px;
   text-align: center;
 }
 .header .sub {
@@ -1111,8 +1111,21 @@ select option {
 .clinic-hours-body {
   padding: 10px 14px 12px;
 }
+/* Day rows read as ONE calm list inside the already-bordered hours card —
+   not six nested white boxes. Same flat-list move budget-2026 uses for its
+   category transaction rows (and that .clinic-card .input-row already uses
+   on the calc tab). Drops ~6px of chrome per row × 6 rows = noticeably less
+   scrolling before the readout on the landing tab. */
 .clinic-hours-body .day-grid .input-row {
-  margin-bottom: 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  margin-bottom: 0;
+  padding: 6px 4px;
+}
+.clinic-hours-body .day-grid .input-row:last-of-type {
+  border-bottom: none;
 }
 .hours-readouts {
   margin-top: 10px;

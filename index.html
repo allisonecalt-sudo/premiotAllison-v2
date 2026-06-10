@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260610g" />
+    <link rel="stylesheet" href="styles.css?v=20260610h" />
   </head>
   <body>
     <noscript>
@@ -67,8 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <p>חישוב פרמיית עבודה ופרמיית העדרות</p>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 10.6 ז׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 10.6 ח׳</div>
     </div>
 
     <!-- Tab Navigation -->
@@ -445,6 +444,31 @@
         <!-- Progress toward תקרה -->
         <div id="takaraProgress" style="margin-top: 14px"></div>
 
+        <!-- Plain-words explainer — the real reason this app exists: the tlush
+             premia line confuses people. One short, collapsed explanation of
+             what drives the number, in her words. Closed by default so it
+             never crowds the result; one tap when "why did I get less?" hits. -->
+        <div style="margin-top: 10px">
+          <button onclick="toggleSection('howItWorks')" class="disclosure-btn">
+            <span>💡 איך הפרמיה עובדת?</span>
+            <span id="arrow_howItWorks" class="arrow">▼</span>
+          </button>
+          <div id="howItWorks" class="disclosure-panel">
+            <div style="font-size: 13px; line-height: 1.7; color: var(--text)">
+              הפרמיה היא תשלום על <strong>כמה טיפולים נתת ביחס לשעות שלך</strong>. ככל שיש יותר
+              תפוקות בשעות העבודה — הממוצע עולה, והפרמיה גדלה. <br /><br />
+              <strong>שני דברים מגדילים אותה:</strong><br />
+              • עוד תפוקות (טיפולים מקודדים ב-Clicks)<br />
+              • להעביר שעות לשלט — פחות שעות "רגילות" מעלה את הממוצע
+              <br /><br />
+              יש <strong>תקרה</strong> — מעבר אליה לא משלמים יותר, גם אם נתת עוד טיפולים.
+              <br /><span style="color: var(--muted); font-size: 12px"
+                >קיבלת פחות מהצפוי? בדקי שכל הטיפולים נספרו ב-Clicks.</span
+              >
+            </div>
+          </div>
+        </div>
+
         <!-- Together-vs-separate comparison — only rendered when 2+ clinics
              have input. Clalit is inconsistent about which method it uses,
              so both are shown for checking against the premia report. -->
@@ -802,6 +826,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260610g"></script>
+    <script src="app.js?v=20260610h"></script>
   </body>
 </html>

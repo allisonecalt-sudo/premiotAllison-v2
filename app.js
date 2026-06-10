@@ -673,8 +673,15 @@ function calc() {
 
   // ---- Combined readouts ----
   document.getElementById('r_total').textContent = fmtILS(totalPremium);
-  document.getElementById('r_total_sub').textContent =
-    'סמל 1783: ' + fmtILS(totalAvoda) + ' | סמל 1785: ' + fmtILS(totalHeadrut);
+  // Plain words first, tlush codes demoted to a quiet parenthetical — a
+  // confused OT reads "פרמיית עבודה / העדרות", not "סמל 1783/1785". The codes
+  // stay so she can still cross-check against the two tlush lines.
+  document.getElementById('r_total_sub').innerHTML =
+    'עבודה ' +
+    fmtILS(totalAvoda) +
+    ' + העדרות ' +
+    fmtILS(totalHeadrut) +
+    ' <span style="opacity:0.6;">(סמל 1783 + 1785)</span>';
 
   document.getElementById('r_avoda').textContent = fmtILS(totalAvoda);
   document.getElementById('r_headrut').textContent = fmtILS(totalHeadrut);
@@ -775,7 +782,7 @@ function calc() {
         <span style="font-size:11px; color:var(--muted);">פרמיה: ${fmtILS(totalPremium)}</span>
         <span style="font-size:11px; color:var(--muted);">תקרה: ${fmtILS(totalCeiling)}</span>
       </div>
-      ${atOrOverCap ? '' : `<div style="margin-top:6px; font-size:12px; color:#d97706; text-align:center;">חסר: ${fmtILS(gapToTakara)}</div>`}
+      ${atOrOverCap ? '' : `<div style="margin-top:6px; font-size:12px; color:var(--warning); text-align:center;">חסר עד התקרה: ${fmtILS(gapToTakara)}</div>`}
     </div>`
       : '';
 
