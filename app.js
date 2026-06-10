@@ -942,6 +942,9 @@ function calc() {
   // Hours-first flow: empty-state placeholder + from-hours badges
   updateHoursFirstUI();
 
+  // Stale-month guard (both tabs' banners)
+  checkStaleMonth();
+
   saveToStorage();
 }
 
@@ -1035,6 +1038,43 @@ function showToast(msg) {
   toastTimer = setTimeout(() => {
     el.classList.remove('show');
   }, 2200);
+}
+
+// ---- STALE-MONTH GUARD ----
+// The app restores the last-used month on load, so in June a returning user
+// silently lands on May with May's numbers (Allison, 2026-06-10: "if doing
+// May... is it clear it's May"). When the saved month is behind the calendar,
+// say so on both tabs instead of letting old data pose as current.
+function checkStaleMonth() {
+  const names = [
+    'ינואר',
+    'פברואר',
+    'מרץ',
+    'אפריל',
+    'מאי',
+    'יוני',
+    'יולי',
+    'אוגוסט',
+    'ספטמבר',
+    'אוקטובר',
+    'נובמבר',
+    'דצמבר',
+  ];
+  const now = new Date();
+  const cur = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const saved = hoursState.month;
+  const stale = !!saved && saved !== cur;
+  let label = '';
+  if (stale) {
+    const [y, m] = saved.split('-').map(Number);
+    label = `⚠️ הנתונים כאן מ־${names[m - 1] || ''} ${y} — לחודש חדש: 🔄 איפוס, ואז מלאי שעות מחדש`;
+  }
+  ['staleMonthHintHours', 'staleMonthHintCalc'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = stale ? '' : 'none';
+    el.textContent = label;
+  });
 }
 
 // ---- RESET — two-stage confirm ----
@@ -1329,7 +1369,28 @@ function calcNoTfuka() {
       <span class="rvalue kpi${accent ? ' lg' : ''}">${value}</span>
     </div>`;
 
-  let html = `<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">`;
+  let html = '';
+
+  // THE question (Allison, 2026-06-10: "how many hours can I do nothing") —
+  // with N tfukot at makdam 2, full premia rate holds while מכנה ≤ N, so up to
+  // (present − N) hours can carry zero treatments (logged as שלט). e.g. 68.50
+  // present hours with 63 tfukot → 5.5 hours of nothing, still full rate.
+  if (expected > 0) {
+    const fullNothingRaw = present - (expected * makdam) / 2;
+    const fullNothing = Math.max(0, Math.min(fullNothingRaw, maxShalat));
+    const cappedBy50 = fullNothingRaw > maxShalat;
+    html += `<div class="total-box" style="margin-bottom:12px;">
+      <div class="tlabel">עם ${expected} תפוקות — שעות שיכולות להישאר ללא טיפולים</div>
+      <div class="tamount">${fullNothing.toFixed(1)} שעות</div>
+      <div class="tsub">${
+        cappedBy50
+          ? `מוגבל בסף ה-50% (${maxShalat.toFixed(1)} שעות) — מעבר לזה אין זכאות לפרמיה`
+          : 'נרשמות כשל"ט — והפרמיה נשארת מלאה'
+      }</div>
+    </div>`;
+  }
+
+  html += `<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">`;
   html += row('שעות נוכחות בפועל', present.toFixed(1) + ' שעות');
   html += row(
     'לא צריכות תפוקה (היעדרות + שלט)',
@@ -1356,7 +1417,7 @@ function calcNoTfuka() {
       const avg = Math.round(Math.min(weighted / mecane - 1, 1) * 100) / 100;
       const premia = present * avg * tarif;
       html += `<div class="alert success" style="margin-top:10px;">
-        <div class="atitle">✓ עם ${expected} תפוקות יש פרמיה</div>
+        <div class="atitle">✓ עם השלט שהזנת (${shalat.toFixed(1)}) יש פרמיה</div>
         <div class="abody">פרמיית עבודה משוערת: <strong>${fmtILS(premia)}</strong> (לפני תקרה אישית)</div>
       </div>`;
     } else {
@@ -1365,7 +1426,7 @@ function calcNoTfuka() {
       const shalatNeeded = present - weighted - shalat;
       const feasible = shalat + shalatNeeded <= maxShalat;
       html += `<div class="alert warning" style="margin-top:10px;">
-        <div class="atitle">עם ${expected} תפוקות — עדיין אין פרמיה</div>
+        <div class="atitle">עם ${expected} תפוקות והשלט שהזנת — עדיין אין פרמיה</div>
         <div class="abody">${
           feasible
             ? `כדי להתחיל להרוויח: עוד <strong>${Math.max(0.5, Math.ceil(shalatNeeded * 2) / 2).toFixed(1)} שעות שלט</strong> (או יותר תפוקות).`
