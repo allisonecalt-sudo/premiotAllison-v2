@@ -500,13 +500,18 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   const tipulimMushkalim = tifukot * makdam;
   const mecane = shaAvoda;
   const rawAvg = mecane > 0 ? tipulimMushkalim / mecane : 0;
-  const avgTipulim = Math.min(Math.max(rawAvg - 1, 0), 1);
+  // Clalit rounds the payment average to 2 decimals before multiplying —
+  // verified against Moran's Dec25–Mar26 premia PDFs (matches to ±0.08₪;
+  // full precision is off by ₪2–14).
+  const avgTipulim = Math.round(Math.min(Math.max(rawAvg - 1, 0), 1) * 100) / 100;
   const totalHoursLeTashlum = Math.max(0, shaTeken - headrutMazaka - headrutLoMazaka + shaNosfot);
 
   // Per-clinic mishra% = (work + overtime + qualifying absence) / shared potential
   const mishraHours = Math.max(0, shaTeken - headrutLoMazaka + shaNosfot);
   const mishraPct = sharedPotential > 0 ? mishraHours / sharedPotential : 0;
-  const takaraClinic = mishraPct * fullCeiling;
+  // Clalit rounds the % to a whole number for the ceiling — every block in
+  // the 6 verified premia PDFs is an exact integer-% × 5400.
+  const takaraClinic = (Math.round(mishraPct * 100) / 100) * fullCeiling;
 
   // Coded-pct threshold (per clinic)
   const actualHoursPresent = shaAvoda + shaLaTipulit;
@@ -1254,6 +1259,31 @@ function toggleSection(id) {
 }
 
 // ---- NO-TFUKA PLANNER (Hagit mode) ----
+// Linked to the main calculator: prefills its fields from the clinics' summed
+// data (which itself flows from the hours-tab day grid). force=true (the
+// button) overwrites; force=false (tab switch) fills only when all empty.
+function ntPullFromCalc(force) {
+  const map = {
+    nt_teken: 'shaTeken',
+    nt_nosafot: 'shaNosfot',
+    nt_shalat: 'shaLaTipulit',
+    nt_mazaka: 'headrutMazaka',
+    nt_loMazaka: 'headrutLoMazaka',
+  };
+  const anyTyped = Object.keys(map).some((id) => v(id) > 0);
+  if (anyTyped && !force) return;
+  let pulledAny = false;
+  Object.entries(map).forEach(([ntId, field]) => {
+    const sum = clinics.reduce((s, c) => s + (parseFloat(c[field]) || 0), 0);
+    const el = document.getElementById(ntId);
+    if (el) el.value = sum > 0 ? +sum.toFixed(2) : '';
+    if (sum > 0) pulledAny = true;
+  });
+  const note = document.getElementById('ntSyncNote');
+  if (note) note.style.display = pulledAny ? '' : 'none';
+  calcNoTfuka();
+}
+
 // Reverse calculator: instead of "treatments in → premia out", the user enters
 // the hours that DON'T produce (שלט + absences) and learns how many hours are
 // actually judged, how many tfukot the month demands, and — given expected
@@ -1316,7 +1346,8 @@ function calcNoTfuka() {
   if (expected > 0 && !overShalatCap) {
     const weighted = expected * makdam;
     if (weighted > mecane) {
-      const avg = Math.min(weighted / mecane - 1, 1);
+      // Same 2-decimal rounding Clalit applies in calcClinic
+      const avg = Math.round(Math.min(weighted / mecane - 1, 1) * 100) / 100;
       const premia = present * avg * tarif;
       html += `<div class="alert success" style="margin-top:10px;">
         <div class="atitle">✓ עם ${expected} תפוקות יש פרמיה</div>
@@ -1349,6 +1380,7 @@ function switchTab(tab) {
   document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
   document.getElementById('tab-hours').classList.toggle('active', tab === 'hours');
   document.getElementById('tab-notfuka').classList.toggle('active', tab === 'notfuka');
+  if (tab === 'notfuka') ntPullFromCalc(false);
   if (tab === 'hours') {
     // Re-render hours sections in case clinics were added/removed/renamed
     // since the last time we visited this tab.

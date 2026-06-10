@@ -90,6 +90,26 @@
             הזיני שעות והורדות — והמחשבון יגיד כמה שעות נמדדות באמת וכמה תפוקות צריך
           </div>
 
+          <!-- Linked to the main calculator: prefills from the clinics' data
+               (which itself comes from the hours-tab day grid). Editable —
+               the what-if game stays possible. -->
+          <div
+            id="ntSyncRow"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin: 0 0 12px;
+              font-size: 11px;
+              color: var(--muted);
+            "
+          >
+            <span id="ntSyncNote" style="display: none">נמשך מטאב המחשבון — אפשר לערוך</span>
+            <button type="button" class="edit-from-hours" onclick="ntPullFromCalc(true)">
+              ← משכי מהמחשבון
+            </button>
+          </div>
+
           <div class="input-row">
             <label>שעות תקן בחודש</label>
             <span class="unit">שעות</span>
