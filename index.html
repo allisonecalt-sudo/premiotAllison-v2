@@ -70,6 +70,122 @@
           מחשבון פרמיה
         </button>
         <button id="tab-hours" class="tab-btn" onclick="switchTab('hours')">חישוב שעות</button>
+        <button id="tab-notfuka" class="tab-btn" onclick="switchTab('notfuka')">
+          שעות בלי תפוקה
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB: No-Tfuka planner — reverse calculator (Hagit's mode): enter the
+         hours that don't produce (שלט, היעדרויות) and learn how many hours
+         are actually judged + how many tfukot are needed. -->
+    <div id="panel-notfuka" style="display: none">
+      <div class="container">
+        <div style="max-width: 720px">
+          <div class="section-title">
+            <span>כמה שעות יכולות להיות בלי תפוקה?</span>
+            <div class="line"></div>
+          </div>
+          <div style="font-size: 11px; color: var(--muted); margin: 4px 0 12px">
+            הזיני שעות והורדות — והמחשבון יגיד כמה שעות נמדדות באמת וכמה תפוקות צריך
+          </div>
+
+          <div class="input-row">
+            <label>שעות תקן בחודש</label>
+            <span class="unit">שעות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_teken"
+              placeholder="0"
+              step="0.5"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="calcNoTfuka()"
+            />
+          </div>
+          <div class="input-row">
+            <label>שעות נוספות</label>
+            <span class="unit">שעות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_nosafot"
+              placeholder="0"
+              step="0.5"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="calcNoTfuka()"
+            />
+          </div>
+          <div class="input-row">
+            <label>
+              <button class="tip-btn" data-tip="shalet">?</button>
+              שעות שלא לטיפולים (שלט)
+            </label>
+            <span class="unit">שעות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_shalat"
+              placeholder="0"
+              step="0.5"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="calcNoTfuka()"
+            />
+          </div>
+          <div class="input-row">
+            <label>היעדרות מזכה (מחלה, חופש)</label>
+            <span class="unit">שעות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_mazaka"
+              placeholder="0"
+              step="0.5"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="calcNoTfuka()"
+            />
+          </div>
+          <div class="input-row">
+            <label>היעדרות לא מזכה</label>
+            <span class="unit">שעות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_loMazaka"
+              placeholder="0"
+              step="0.5"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="calcNoTfuka()"
+            />
+          </div>
+          <div class="input-row">
+            <label>תפוקות צפויות החודש (רשות)</label>
+            <span class="unit">תפוקות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_tifukot"
+              placeholder="0"
+              step="1"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="calcNoTfuka()"
+            />
+          </div>
+
+          <div id="noTfukaResults" style="margin-top: 14px"></div>
+        </div>
       </div>
     </div>
 
@@ -270,6 +386,11 @@
 
         <!-- Progress toward תקרה -->
         <div id="takaraProgress" style="margin-top: 14px"></div>
+
+        <!-- Together-vs-separate comparison — only rendered when 2+ clinics
+             have input. Clalit is inconsistent about which method it uses,
+             so both are shown for checking against the premia report. -->
+        <div id="compareArea" style="margin-top: 10px"></div>
 
         <!-- Alert area (threshold warnings) -->
         <div id="alertArea" style="margin-top: 10px"></div>

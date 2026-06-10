@@ -23,7 +23,17 @@ New in v2 setup: TypeScript (strict, noUncheckedIndexedAccess), `npm run typeche
 
 ## What's next
 
-Upgrade spec — TBD. Allison will dump requirements.
+- Two-machon arc (2026-06-10): Clalit's premia reports flip between computing
+  each machon separately and pooling everything under one machon — and the
+  methods pay differently when one machon is below the 1.0 average gate.
+  Shipped: together-vs-separate comparison card (calc tab, appears with 2+
+  clinics). Possible follow-up: a compare-to-official-report view (paste what
+  the PDF credited, flag vanished treatments).
+- "שעות בלי תפוקה" tab (Hagit's idea, shipped 2026-06-10): reverse calculator —
+  enter the hours that don't produce (שלט + absences) and learn how many hours
+  are judged, the 50% shalat cap, and how many tfukot the month demands.
+- Known quirk: Clalit rounds the payment average to 2 decimals before
+  multiplying; the app keeps full precision (differences of a few ₪).
 
 ## Local dev
 

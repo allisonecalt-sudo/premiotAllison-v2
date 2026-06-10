@@ -757,6 +757,66 @@ function calc() {
     </div>`
       : '';
 
+  // ---- Together-vs-separate comparison (2-machon workers) ----
+  // Clalit's premia reports flip between computing each machon separately and
+  // pooling everything under one machon. The methods only differ when one
+  // machon is below the 1.0 average gate — show both so the user can lay the
+  // official report next to the calculator and see which method was used.
+  const compareArea = document.getElementById('compareArea');
+  if (compareArea) {
+    const activeCount = results.filter((r) => r.hasAnyInput).length;
+    if (activeCount >= 2 && !emptyState) {
+      const pooled = {
+        shaTeken: 0,
+        shaNosfot: 0,
+        shaLaTipulit: 0,
+        headrutMazaka: 0,
+        headrutLoMazaka: 0,
+        tifukot: 0,
+      };
+      clinics.forEach((c) => {
+        pooled.shaTeken += parseFloat(c.shaTeken) || 0;
+        pooled.shaNosfot += parseFloat(c.shaNosfot) || 0;
+        pooled.shaLaTipulit += parseFloat(c.shaLaTipulit) || 0;
+        pooled.headrutMazaka += parseFloat(c.headrutMazaka) || 0;
+        pooled.headrutLoMazaka += parseFloat(c.headrutLoMazaka) || 0;
+        pooled.tifukot += parseFloat(c.tifukot) || 0;
+      });
+      const together = calcClinic(pooled, sharedPotential, fullCeiling, avgShnati, tarif, makdam);
+      const separateTotal = totalPremium;
+      const togetherTotal = together.totalClinic;
+      const diff = separateTotal - togetherTotal;
+      const same = Math.abs(diff) < 0.5;
+      const rowStyle =
+        'display:flex; justify-content:space-between; align-items:center; padding:6px 0;';
+      const markBest = (isBest) =>
+        isBest && !same ? 'font-weight:800; color:#2d6a4f;' : 'color:var(--text);';
+      compareArea.innerHTML = `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
+      <div style="font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">
+        שני מכונים — שתי שיטות חישוב
+      </div>
+      <div style="${rowStyle}">
+        <span style="font-size:13px;">כל מכון בנפרד</span>
+        <span style="font-size:15px; ${markBest(diff > 0)}">${fmtILS(separateTotal)}</span>
+      </div>
+      <div style="${rowStyle} border-top:1px solid var(--border);">
+        <span style="font-size:13px;">הכל מאוחד תחת מכון אחד</span>
+        <span style="font-size:15px; ${markBest(diff < 0)}">${fmtILS(togetherTotal)}</span>
+      </div>
+      <div style="margin-top:6px; font-size:11px; color:var(--muted);">
+        ${
+          same
+            ? 'החודש אין הבדל בין השיטות — שני המכונים עוברים את הסף.'
+            : `הפרש: <strong>${fmtILS(Math.abs(diff))}</strong>. כללית לא עקבית בשיטה — השוו לדוח הפרמיות בתלוש ובדקו שכל הטיפולים נספרו.`
+        }
+      </div>
+    </div>`;
+    } else {
+      compareArea.innerHTML = '';
+    }
+  }
+
   // ---- Alerts + suggestions ----
   const alertArea = document.getElementById('alertArea');
   const suggestArea = document.getElementById('suggestArea');
@@ -1193,12 +1253,102 @@ function toggleSection(id) {
   }
 }
 
+// ---- NO-TFUKA PLANNER (Hagit mode) ----
+// Reverse calculator: instead of "treatments in → premia out", the user enters
+// the hours that DON'T produce (שלט + absences) and learns how many hours are
+// actually judged, how many tfukot the month demands, and — given expected
+// tfukot — whether the plan earns anything.
+function calcNoTfuka() {
+  const teken = v('nt_teken');
+  const nosafot = v('nt_nosafot');
+  const shalat = v('nt_shalat');
+  const mazaka = v('nt_mazaka');
+  const loMazaka = v('nt_loMazaka');
+  const expected = v('nt_tifukot');
+  const makdam = v('makdam');
+  const tarif = v('tarif');
+  const out = document.getElementById('noTfukaResults');
+  if (!out) return;
+
+  if (teken <= 0) {
+    out.innerHTML = `<div class="alert neutral">
+      <div class="atitle">מלאי שעות תקן כדי לראות תוצאה</div>
+      <div class="abody">המחשבון יראה כמה שעות לא צריכות תפוקה וכמה תפוקות צריך החודש.</div>
+    </div>`;
+    return;
+  }
+
+  // Present hours = everything Clalit pays for minus absences; shalat stays
+  // inside them but is exempt from the productivity denominator.
+  const present = Math.max(0, teken + nosafot - mazaka - loMazaka);
+  const mecane = Math.max(0, present - shalat);
+  const maxShalat = present / 2; // 50% coded-hours threshold
+  const overShalatCap = shalat > maxShalat + 0.001;
+  const minTifukot = mecane / makdam; // weighted must EXCEED mecane to earn
+  const maxTifukot = (mecane * 2) / makdam; // avg 2.0 → full bonus rate
+
+  const row = (label, value, accent) => `
+    <div class="result-row${accent ? ' accent' : ''}" style="border:none; background:none;">
+      <span class="rlabel">${label}</span>
+      <span class="rvalue kpi${accent ? ' lg' : ''}">${value}</span>
+    </div>`;
+
+  let html = `<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">`;
+  html += row('שעות נוכחות בפועל', present.toFixed(1) + ' שעות');
+  html += row(
+    'לא צריכות תפוקה (היעדרות + שלט)',
+    (mazaka + loMazaka + shalat).toFixed(1) + ' שעות',
+    true,
+  );
+  html += row('נמדדות לתפוקה (המכנה)', mecane.toFixed(1) + ' שעות');
+  html += row('מקסימום שלט מותר החודש (סף 50%)', maxShalat.toFixed(1) + ' שעות');
+  html += row('תפוקות מינימום לפרמיה כלשהי', 'יותר מ-' + minTifukot.toFixed(1));
+  html += row('תפוקות לקצב פרמיה מלא', maxTifukot.toFixed(1));
+  html += `</div>`;
+
+  if (overShalatCap) {
+    html += `<div class="alert danger" style="margin-top:10px;">
+      <div class="atitle">⚠️ יותר מדי שלט</div>
+      <div class="abody">השלט עבר את סף ה-50% (${maxShalat.toFixed(1)} שעות) — במצב כזה אין פרמיה בכלל, לא משנה כמה תפוקות.</div>
+    </div>`;
+  }
+
+  if (expected > 0 && !overShalatCap) {
+    const weighted = expected * makdam;
+    if (weighted > mecane) {
+      const avg = Math.min(weighted / mecane - 1, 1);
+      const premia = present * avg * tarif;
+      html += `<div class="alert success" style="margin-top:10px;">
+        <div class="atitle">✓ עם ${expected} תפוקות יש פרמיה</div>
+        <div class="abody">פרמיית עבודה משוערת: <strong>${fmtILS(premia)}</strong> (לפני תקרה אישית)</div>
+      </div>`;
+    } else {
+      // Earn nothing unless judged hours drop below weighted treatments —
+      // i.e. more hours must become shalat (bounded by the 50% cap).
+      const shalatNeeded = present - weighted - shalat;
+      const feasible = shalat + shalatNeeded <= maxShalat;
+      html += `<div class="alert warning" style="margin-top:10px;">
+        <div class="atitle">עם ${expected} תפוקות — עדיין אין פרמיה</div>
+        <div class="abody">${
+          feasible
+            ? `כדי להתחיל להרוויח: עוד <strong>${Math.max(0.5, Math.ceil(shalatNeeded * 2) / 2).toFixed(1)} שעות שלט</strong> (או יותר תפוקות).`
+            : `גם מקסימום שלט לא יספיק החודש — צריך יותר מ-${minTifukot.toFixed(0)} תפוקות.`
+        }</div>
+      </div>`;
+    }
+  }
+
+  out.innerHTML = html;
+}
+
 // ---- TABS ----
 function switchTab(tab) {
   document.getElementById('panel-calc').style.display = tab === 'calc' ? '' : 'none';
   document.getElementById('panel-hours').style.display = tab === 'hours' ? '' : 'none';
+  document.getElementById('panel-notfuka').style.display = tab === 'notfuka' ? '' : 'none';
   document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
   document.getElementById('tab-hours').classList.toggle('active', tab === 'hours');
+  document.getElementById('tab-notfuka').classList.toggle('active', tab === 'notfuka');
   if (tab === 'hours') {
     // Re-render hours sections in case clinics were added/removed/renamed
     // since the last time we visited this tab.
