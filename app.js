@@ -545,6 +545,12 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   if (!hasAnyInput) {
     pill = 'neutral';
     pillLabel = '—';
+  } else if (tifukot === 0) {
+    // Hours are in but treatments haven't been entered yet — this is an
+    // incomplete input, not a problem. Don't alarm-amber a clinic the user
+    // is still filling; invite the next step instead.
+    pill = 'neutral';
+    pillLabel = 'ממתין לתפוקות';
   } else if (belowThreshold) {
     pill = 'warn';
     pillLabel = '⚠️ סף לא הושג';
@@ -1637,7 +1643,17 @@ function onHoursInput(e) {
   const days = getClinicHoursDays(cid);
   if (!days[didx]) days[didx] = { checked: false, hrs: '' };
   if (kind === 'chk') days[didx].checked = !!t.checked;
-  if (kind === 'hrs') days[didx].hrs = t.value;
+  if (kind === 'hrs') {
+    days[didx].hrs = t.value;
+    // Typing hours means "I work this day" — auto-tick the box so a non-techy
+    // OT who fills the number but forgets the checkbox still sees her teken
+    // update. Clearing the number back to 0/empty un-ticks it. The compute
+    // still gates on (checked && hrs>0), so this only syncs the UI state.
+    const hrsNum = parseFloat(t.value) || 0;
+    days[didx].checked = hrsNum > 0;
+    const chk = document.getElementById(`chk_${cid}_d${didx}`);
+    if (chk) chk.checked = days[didx].checked;
+  }
   saveHoursState();
   calcHours();
 }
