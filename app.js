@@ -655,8 +655,12 @@ function calc() {
     };
     if (r.hasAnyInput) {
       setMini('mishraPct', (r.mishraPct * 100).toFixed(1) + '%');
+      // תקרה stays whole-shekel (always a round number, secondary stat).
+      // סך פרמיה must match the clinic sum + big number to the agora — showing
+      // a rounded ₪1,283 next to ₪1,282.72 on the same card eroded trust in a
+      // calculator whose only job is to match the tlush (Allison, 2026-06-10).
       setMini('takaraClinic', fmtILS0(r.takaraClinic));
-      setMini('totalClinic', fmtILS0(r.totalClinic));
+      setMini('totalClinic', fmtILS(r.totalClinic));
     } else {
       // Empty clinic: show em-dashes, calm — don't draw eye to nothing.
       setMini('mishraPct', '—');
@@ -728,7 +732,12 @@ function calc() {
   document.getElementById('stickyPct').textContent = stickyPctVal.toFixed(0) + '%';
   document.getElementById('stickyTakara').textContent =
     'תקרה: ' + (totalCeiling > 0 ? fmtILS0(totalCeiling) : '—');
-  document.getElementById('r_avg_sticky').textContent = combinedAvgClamped.toFixed(3);
+  // On a fresh page (no input yet) show "—", not "0.000" — a hard zero reads
+  // as a real computed average and makes the empty calc look broken/alarming
+  // (5b, 2026-06-10). Real zeros once data exists are still shown.
+  document.getElementById('r_avg_sticky').textContent = emptyState
+    ? '—'
+    : combinedAvgClamped.toFixed(3);
 
   // chips per-clinic in sticky (only when multi)
   updateChips(results);
@@ -1421,10 +1430,14 @@ function calcNoTfuka() {
   const minTifukot = mecane / makdam; // weighted must EXCEED mecane to earn
   const maxTifukot = (mecane * 2) / makdam; // avg 2.0 → full bonus rate
 
+  // Supporting reference rows. The big-number answer above is the moment; these
+  // are a calm breakdown, so NOT every row gets loud-KPI styling (it made all
+  // six shout equally and flattened the hierarchy). Only the one accent row
+  // (the load-bearing "hours that need no tfuka") carries weight.
   const row = (label, value, accent) => `
     <div class="result-row${accent ? ' accent' : ''}" style="border:none; background:none;">
       <span class="rlabel">${label}</span>
-      <span class="rvalue kpi${accent ? ' lg' : ''}">${value}</span>
+      <span class="rvalue${accent ? ' kpi' : ''}">${value}</span>
     </div>`;
 
   let html = '';
