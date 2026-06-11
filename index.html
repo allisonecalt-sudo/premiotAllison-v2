@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260611b" />
+    <link rel="stylesheet" href="styles.css?v=20260611c" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ב׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ג׳</div>
     </div>
 
     <!-- Tab Navigation -->
@@ -136,12 +136,13 @@
                   type="number"
                   inputmode="decimal"
                   id="nt_shalat"
+                  data-link="shaLaTipulit"
                   placeholder="0"
                   step="0.5"
                   min="0"
                   lang="en"
                   autocomplete="off"
-                  oninput="calcNoTfuka()"
+                  oninput="ntFieldInput(this)"
                 />
               </div>
               <div class="input-row">
@@ -151,12 +152,13 @@
                   type="number"
                   inputmode="decimal"
                   id="nt_mazaka"
+                  data-link="headrutMazaka"
                   placeholder="0"
                   step="0.5"
                   min="0"
                   lang="en"
                   autocomplete="off"
-                  oninput="calcNoTfuka()"
+                  oninput="ntFieldInput(this)"
                 />
               </div>
               <div class="input-row">
@@ -166,12 +168,13 @@
                   type="number"
                   inputmode="decimal"
                   id="nt_loMazaka"
+                  data-link="headrutLoMazaka"
                   placeholder="0"
                   step="0.5"
                   min="0"
                   lang="en"
                   autocomplete="off"
-                  oninput="calcNoTfuka()"
+                  oninput="ntFieldInput(this)"
                 />
               </div>
               <div class="input-row">
@@ -196,12 +199,13 @@
                   type="number"
                   inputmode="decimal"
                   id="nt_nosafot"
+                  data-link="shaNosfot"
                   placeholder="0"
                   step="0.5"
                   min="0"
                   lang="en"
                   autocomplete="off"
-                  oninput="calcNoTfuka()"
+                  oninput="ntFieldInput(this)"
                 />
               </div>
             </div>
@@ -290,7 +294,9 @@
         <div class="sticky-result">
           <div style="display: flex; align-items: center; gap: 12px; justify-content: center">
             <div class="total-block" style="text-align: center">
-              <div class="label">סך פרמיה</div>
+              <!-- Month rides in the label (her ask 2026-06-11: "month also on
+                   ribbon") — zero extra height on a frozen strip -->
+              <div class="label">סך פרמיה <span id="stickyMonth"></span></div>
               <div id="r_total_sticky" class="value">₪0.00</div>
             </div>
             <div style="flex: 1; max-width: 200px">
@@ -629,7 +635,16 @@
       <div class="clinic-hours-card" data-hours-card>
         <div class="clinic-hours-header">
           <span class="ch-icon">📋</span>
-          <span class="ch-name" data-hours-name>מרפאה</span>
+          <!-- Editable here too (her ask, 2026-06-11) — a person can name the
+               clinic on the landing tab, not only on the calc card. Synced
+               both ways with the calc-tab name input. -->
+          <input
+            type="text"
+            class="clinic-name-input"
+            data-hours-name
+            data-kind="name"
+            placeholder="מרפאה"
+          />
           <span class="ch-pill" data-hours-pill>שעות לפי המרפאה הזו</span>
         </div>
         <div class="clinic-hours-body">
@@ -647,8 +662,11 @@
           </div>
 
           <details class="hours-breakdown">
-            <summary>פירוט ימים</summary>
-            <div data-readout-breakdown></div>
+            <summary>📅 פירוט החודש — כל הימים</summary>
+            <div
+              data-readout-breakdown
+              style="font-size: 12.5px; line-height: 2; padding-top: 4px"
+            ></div>
           </details>
         </div>
       </div>
@@ -855,6 +873,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260611b"></script>
+    <script src="app.js?v=20260611c"></script>
   </body>
 </html>

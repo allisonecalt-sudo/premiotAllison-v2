@@ -391,11 +391,11 @@ function renderClinics() {
       c.name = nameInput.value;
       lastEditedClinicId = c.id;
       saveToStorage();
-      // Keep Hours-tab section labels in sync with calc-tab clinic names
+      // Keep Hours-tab name inputs in sync with calc-tab clinic names
       const hoursName = document.querySelector(
         `[data-hours-card][data-hours-clinic-id="${c.id}"] [data-hours-name]`,
       );
-      if (hoursName) hoursName.textContent = c.name || 'מרפאה';
+      if (hoursName && hoursName.value !== c.name) hoursName.value = c.name || '';
       updateChips();
     });
     nameInput.addEventListener('focus', saveUndoSnapshot);
@@ -765,6 +765,11 @@ function calc() {
   document.getElementById('r_mishra_sticky').textContent = emptyState
     ? '—'
     : (totalMishraPct * 100).toFixed(1) + '%';
+  // Month on the ribbon (her ask, 2026-06-11) — context for every frozen number
+  const stickyMonthName = document.getElementById('selectedMonth').value;
+  document.getElementById('stickyMonth').textContent = stickyMonthName
+    ? '· ' + stickyMonthName
+    : '';
   // "(משותף לכל המרפאות)" is only information once a second clinic exists
   const scopeNote = document.getElementById('sharedScopeNote');
   if (scopeNote) scopeNote.style.display = clinics.length > 1 ? '' : 'none';
@@ -1350,8 +1355,15 @@ function ntPullFromCalc() {
     if (sum > 0) pulledAny = true;
   });
   const note = document.getElementById('ntSyncNote');
-  if (note)
-    note.textContent = pulledAny ? 'מסונכרן עם המחשבון ✓' : 'השעות נמשכות אוטומטית מהמחשבון';
+  if (note) {
+    if (clinics.length > 1) {
+      note.textContent = 'סכום כל המרפאות — עריכה כאן לניסוי בלבד';
+    } else {
+      note.textContent = pulledAny
+        ? 'מקושר למחשבון ✓ — עריכה מתעדכנת בכל מקום'
+        : 'השעות נמשכות אוטומטית מהמחשבון';
+    }
+  }
   calcNoTfuka();
 }
 
@@ -1367,11 +1379,9 @@ function renderNtMonthReference() {
     out.innerHTML = '';
     return;
   }
-  const [year, month] = monthVal.split('-').map(Number);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
   // Merge work hours per weekday across all clinics (same gate as compute:
-  // checked + hrs > 0)
+  // checked + hrs > 0), then render with the shared day-by-day renderer —
+  // same rows as the hours-tab פירוט ימים, one source of truth.
   const merged = {};
   clinics.forEach((c) => {
     const cdays = getClinicHoursDays(c.id);
@@ -1382,41 +1392,29 @@ function renderNtMonthReference() {
       }
     }
   });
-  const rows = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(year, month - 1, d);
-    const dow = date.getDay();
-    if (dow === 6) continue; // Shabbat — never counted
-    const dateStr = monthVal + '-' + String(d).padStart(2, '0');
-    const holiday = HOLIDAYS[dateStr];
-    let mult = 1;
-    let note = 'יום רגיל — 8 שעות';
-    if (holiday) {
-      if (holiday.type === 'chag' || holiday.type === 'yomAtzmaut') {
-        mult = 0;
-        note = holiday.name + ' — 0 שעות';
-      } else if (holiday.type === 'erev') {
-        mult = 0.5;
-        note = holiday.name + ' — 4 שעות (50%)';
-      } else if (holiday.type === 'cholhamoed') {
-        mult = 0.625;
-        note = holiday.name + ' — 5 שעות (62.5%)';
-      } else if (holiday.type === 'mekutzar') {
-        note = holiday.name + ' — יום מקוצר = מלא';
-      }
-    }
-    if (dow === 5) note += ' (שישי — לתקן בלבד)';
-    const works = dow in merged;
-    let line = `${dayNames[dow]} ${d}/${month} — ${note}`;
-    if (works) {
-      const teken = merged[dow] * mult;
-      line += ` | שלך: ${teken % 1 === 0 ? teken : teken.toFixed(2)} ✓`;
-    }
-    rows.push(
-      `<div style="${works ? 'color:#2d6a4f; font-weight:600;' : 'color:var(--muted);'}">${line}</div>`,
+  out.innerHTML = monthDayRows(merged, monthVal);
+}
+
+// Linked editing (her ask 2026-06-11: "so they can see if scenarios change
+// how much they don't have to do"): anything that changes שעות עבודה — שלט,
+// עודפות, both היעדרויות — edited HERE writes back to the calculator, so a
+// scenario isn't a detached sandbox. Only with ONE clinic: with 2+ the nt
+// fields are sums across clinics and a write-back would be ambiguous — then
+// edits stay local and the sync note says so. תקן stays owned by the hours
+// tab; תפוקות צפויות stays a local what-if.
+function ntFieldInput(input) {
+  const field = input.getAttribute('data-link');
+  if (field && clinics.length === 1) {
+    clinics[0][field] = input.value;
+    // keep the calc-tab card's input showing the same value
+    const calcEl = document.querySelector(
+      `[data-clinic-card][data-clinic-id="${clinics[0].id}"] [data-field="${field}"]`,
     );
+    if (calcEl && calcEl.value !== input.value) calcEl.value = input.value;
+    saveToStorage();
+    calc();
   }
-  out.innerHTML = rows.join('');
+  calcNoTfuka();
 }
 
 // Reverse calculator: instead of "treatments in → premia out", the user enters
@@ -1783,7 +1781,9 @@ function renderHoursClinics() {
     const card = node.querySelector('[data-hours-card]');
     card.setAttribute('data-hours-clinic-id', c.id);
     const nameEl = card.querySelector('[data-hours-name]');
-    nameEl.textContent = c.name || 'מרפאה ' + (cidx + 1);
+    nameEl.value = c.name || '';
+    nameEl.placeholder = 'מרפאה ' + (cidx + 1);
+    nameEl.setAttribute('data-clinic-id', c.id);
     const pillEl = card.querySelector('[data-hours-pill]');
     pillEl.textContent = 'שעות לפי המרפאה הזו';
 
@@ -1820,6 +1820,20 @@ function onHoursInput(e) {
   const t = e.target;
   if (!t || !t.dataset || !t.dataset.clinicId) return;
   const cid = t.dataset.clinicId;
+  // Clinic rename from the hours tab — mirror of the calc-tab name handler:
+  // write to the model, push into the calc card's input, refresh chips.
+  if (t.dataset.kind === 'name') {
+    const c = clinics.find((x) => x.id === cid);
+    if (!c) return;
+    c.name = t.value.trim();
+    const calcName = document.querySelector(
+      `[data-clinic-card][data-clinic-id="${cid}"] [data-clinic-name]`,
+    );
+    if (calcName && calcName.value !== c.name) calcName.value = c.name;
+    saveToStorage();
+    calc();
+    return;
+  }
   const didx = parseInt(t.dataset.dayIdx, 10);
   const kind = t.dataset.kind;
   const days = getClinicHoursDays(cid);
@@ -1926,32 +1940,60 @@ function computeHoursForClinic(clinicId, monthVal) {
   return { potential, teken, groups };
 }
 
-function renderHoursBreakdown(groups) {
-  const lines = [];
-  if (groups.regular.count > 0) {
-    lines.push(
-      `<div>ימי חול: ${groups.regular.count} × ${(groups.regular.hours / groups.regular.count).toFixed(0)} = ${groups.regular.hours.toFixed(1)}ש</div>`,
+// Day-by-day month rows — ONE renderer for both the hours-tab פירוט ימים and
+// the notfuka month reference. Replaces the grouped summary ("ימי חול:
+// 14 × 7 = 103ש") whose rounded multiplier made the math look wrong when
+// different weekdays have different hours (14 × 7.36 displayed as 14 × 7).
+// Her ask 2026-06-11: "bring back the dates, 8hr teken, the whole thing."
+function monthDayRows(workDays, monthVal) {
+  const [year, month] = monthVal.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  const rows = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month - 1, d);
+    const dow = date.getDay();
+    if (dow === 6) continue; // Shabbat — never counted
+    const dateStr = monthVal + '-' + String(d).padStart(2, '0');
+    const holiday = HOLIDAYS[dateStr];
+    let mult = 1;
+    let note = 'יום רגיל — 8 שעות';
+    if (holiday) {
+      if (holiday.type === 'chag' || holiday.type === 'yomAtzmaut') {
+        mult = 0;
+        note = holiday.name + ' — 0 שעות';
+      } else if (holiday.type === 'erev') {
+        mult = 0.5;
+        note = holiday.name + ' — 4 שעות (50%)';
+      } else if (holiday.type === 'cholhamoed') {
+        mult = 0.625;
+        note = holiday.name + ' — 5 שעות (62.5%)';
+      } else if (holiday.type === 'mekutzar') {
+        note = holiday.name + ' — יום מקוצר = מלא';
+      }
+    }
+    if (dow === 5) note += ' (שישי — לתקן בלבד)';
+    const works = dow in workDays;
+    let line = `${dayNames[dow]} ${d}/${month} — ${note}`;
+    if (works) {
+      const teken = workDays[dow] * mult;
+      line += ` | שלך: ${teken % 1 === 0 ? teken : teken.toFixed(2)} ✓`;
+    }
+    rows.push(
+      `<div style="${works ? 'color:#2d6a4f; font-weight:600;' : 'color:var(--muted);'}">${line}</div>`,
     );
   }
-  if (groups.erev.count > 0) {
-    lines.push(
-      `<div>ערב חג: ${groups.erev.count} × ${(groups.erev.hours / groups.erev.count).toFixed(1)} = ${groups.erev.hours.toFixed(1)}ש</div>`,
-    );
+  return rows.join('');
+}
+
+function renderHoursBreakdown(clinicId, monthVal) {
+  const cdays = getClinicHoursDays(clinicId);
+  const workDays = {};
+  for (let i = 0; i <= 5; i++) {
+    const rec = cdays[i];
+    if (rec && rec.checked && (parseFloat(rec.hrs) || 0) > 0) workDays[i] = parseFloat(rec.hrs);
   }
-  if (groups.cholhamoed.count > 0) {
-    lines.push(
-      `<div>חול המועד: ${groups.cholhamoed.count} × ${(groups.cholhamoed.hours / groups.cholhamoed.count).toFixed(2)} = ${groups.cholhamoed.hours.toFixed(1)}ש</div>`,
-    );
-  }
-  if (groups.chag > 0) {
-    lines.push(`<div>חג: ${groups.chag} (לא נכלל)</div>`);
-  }
-  if (groups.mekutzar.count > 0) {
-    lines.push(
-      `<div>יום מקוצר: ${groups.mekutzar.count} × ${(groups.mekutzar.hours / groups.mekutzar.count).toFixed(0)} = ${groups.mekutzar.hours.toFixed(1)}ש</div>`,
-    );
-  }
-  return lines.join('');
+  return monthDayRows(workDays, monthVal);
 }
 
 // Recompute and paint all clinic sections. Called on input + month change.
@@ -1963,13 +2005,13 @@ function calcHours() {
 
   document.querySelectorAll('[data-hours-card]').forEach((card) => {
     const cid = card.getAttribute('data-hours-clinic-id');
-    const { potential, teken, groups } = computeHoursForClinic(cid, monthVal);
+    const { potential, teken } = computeHoursForClinic(cid, monthVal);
     const potEl = card.querySelector('[data-readout-potential]');
     const tekEl = card.querySelector('[data-readout-teken]');
     const brkEl = card.querySelector('[data-readout-breakdown]');
     if (potEl) potEl.textContent = potential + ' שעות';
     if (tekEl) tekEl.textContent = teken.toFixed(2) + ' שעות';
-    if (brkEl) brkEl.innerHTML = renderHoursBreakdown(groups);
+    if (brkEl) brkEl.innerHTML = renderHoursBreakdown(cid, monthVal);
   });
 }
 

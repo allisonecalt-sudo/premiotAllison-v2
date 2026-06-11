@@ -1112,6 +1112,26 @@ select option {
   color: var(--text);
   letter-spacing: 0;
 }
+/* Editable clinic name on the hours tab — same quiet-until-touched treatment
+   as the calc-tab name input */
+.clinic-hours-header .clinic-name-input {
+  flex: 1;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--text);
+  padding: 4px 6px;
+  border-radius: 6px;
+  min-width: 60px;
+}
+.clinic-hours-header .clinic-name-input:hover,
+.clinic-hours-header .clinic-name-input:focus {
+  background: var(--bg);
+  border-color: var(--border);
+  outline: none;
+}
 .clinic-hours-header .ch-pill {
   font-size: 10px;
   font-weight: 700;
