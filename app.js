@@ -1436,9 +1436,12 @@ function calcNoTfuka() {
   if (!out) return;
 
   if (teken <= 0) {
+    // תקן comes only from the hours tab now (readonly here) — the empty
+    // state must send the user THERE, not tell her to type it in a locked box
     out.innerHTML = `<div class="alert neutral">
-      <div class="atitle">מלאי שעות תקן כדי לראות תוצאה</div>
-      <div class="abody">המחשבון יראה כמה שעות לא צריכות תפוקה וכמה תפוקות צריך החודש.</div>
+      <div class="atitle">מלאי קודם את טאב השעות</div>
+      <div class="abody">שעות התקן מגיעות משם — ואז תראי כאן כמה שעות יכולות להישאר בלי תפוקה.</div>
+      <button type="button" class="cta-primary" style="margin-top:8px;" onclick="switchTab('hours')">← מלאי שעות תחילה</button>
     </div>`;
     return;
   }
@@ -1508,18 +1511,22 @@ function calcNoTfuka() {
     </div>`;
   }
 
-  html += `<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">`;
-  html += row('שעות נוכחות בפועל', present.toFixed(1) + ' שעות');
-  html += row(
+  // The six machinery rows used to sit here in the open — her call
+  // 2026-06-11: "get rid of all this unnecessary." Folded into a collapsed
+  // drill-down appended at the END (after the verdict), pullable, not
+  // deleted (cut ≠ delete).
+  let rowsHtml = `<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-top:6px;">`;
+  rowsHtml += row('שעות נוכחות בפועל', present.toFixed(1) + ' שעות');
+  rowsHtml += row(
     'לא צריכות תפוקה (היעדרות + שלט)',
     (mazaka + loMazaka + shalat).toFixed(1) + ' שעות',
     true,
   );
-  html += row('נמדדות לתפוקה (המכנה)', mecane.toFixed(1) + ' שעות');
-  html += row('מקסימום שלט מותר החודש (סף 50%)', maxShalat.toFixed(1) + ' שעות');
-  html += row('תפוקות מינימום לפרמיה כלשהי', 'יותר מ-' + minTifukot.toFixed(1));
-  html += row('תפוקות לקצב פרמיה מלא', maxTifukot.toFixed(1));
-  html += `</div>`;
+  rowsHtml += row('נמדדות לתפוקה (המכנה)', mecane.toFixed(1) + ' שעות');
+  rowsHtml += row('מקסימום שלט מותר החודש (סף 50%)', maxShalat.toFixed(1) + ' שעות');
+  rowsHtml += row('תפוקות מינימום לפרמיה כלשהי', 'יותר מ-' + minTifukot.toFixed(1));
+  rowsHtml += row('תפוקות לקצב פרמיה מלא', maxTifukot.toFixed(1));
+  rowsHtml += `</div>`;
 
   if (overShalatCap) {
     html += `<div class="alert danger" style="margin-top:10px;">
@@ -1553,6 +1560,12 @@ function calcNoTfuka() {
       </div>`;
     }
   }
+
+  // Collapsed machinery drill-down, last. Re-render wipes <details> state,
+  // so carry the open/closed state across keystrokes.
+  const wasOpen = !!out.querySelector('#ntDetailRows[open]');
+  html += `<details id="ntDetailRows" class="hours-breakdown"${wasOpen ? ' open' : ''} style="margin-top:10px;">
+    <summary>🔢 פירוט</summary>${rowsHtml}</details>`;
 
   out.innerHTML = html;
 }

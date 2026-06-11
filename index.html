@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260611g" />
+    <link rel="stylesheet" href="styles.css?v=20260611i" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ז׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ט׳</div>
     </div>
 
     <!-- Tab Navigation -->
@@ -175,6 +175,9 @@
               <span id="arrow_ntInputs" class="arrow">▼</span>
             </button>
             <div id="ntInputs" class="disclosure-panel">
+              <!-- תקן is FIXED here (her rule 2026-06-11: "should not be
+                   changeable") — it's owned by the hours-tab day grid; the
+                   ערוך button jumps there. Same treatment as the calc tab. -->
               <div class="input-row">
                 <label>שעות תקן בחודש</label>
                 <span class="unit">שעות</span>
@@ -182,13 +185,16 @@
                   type="number"
                   inputmode="decimal"
                   id="nt_teken"
-                  placeholder="0"
+                  placeholder="—"
                   step="0.5"
                   min="0"
                   lang="en"
                   autocomplete="off"
-                  oninput="calcNoTfuka()"
+                  readonly
                 />
+                <button type="button" class="edit-from-hours" onclick="switchTab('hours')">
+                  ערוך
+                </button>
               </div>
               <div class="input-row">
                 <label>תפוקות צפויות החודש</label>
@@ -890,6 +896,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260611g"></script>
+    <script src="app.js?v=20260611i"></script>
   </body>
 </html>
