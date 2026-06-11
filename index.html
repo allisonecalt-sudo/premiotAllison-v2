@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260611j" />
+    <link rel="stylesheet" href="styles.css?v=20260611k" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 י׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 י״א</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
@@ -112,7 +112,7 @@
                how many hours can stay empty (ביטולים). They were buried in
                the collapsed panel; playing with them IS this page's job. -->
           <div class="section-title">
-            <span>✏️ שלט והיעדרויות</span>
+            <span>✏️ שלט, היעדרויות ותפוקות</span>
             <div class="line"></div>
           </div>
           <div class="input-row">
@@ -166,6 +166,24 @@
               oninput="ntFieldInput(this)"
             />
           </div>
+          <!-- Expected tfukot belongs with the visible editing (her call
+               2026-06-11) — it's a what-if lever too; stays local (doesn't
+               write back to the calculator's actual tfukot). -->
+          <div class="input-row">
+            <label>תפוקות צפויות החודש</label>
+            <span class="unit">תפוקות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_tifukot"
+              placeholder="0"
+              step="1"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="calcNoTfuka()"
+            />
+          </div>
 
           <!-- The rest of the inputs, synced from the calculator; collapsed
                because most months nothing here needs touching -->
@@ -195,21 +213,6 @@
                 <button type="button" class="edit-from-hours" onclick="switchTab('hours')">
                   ערוך
                 </button>
-              </div>
-              <div class="input-row">
-                <label>תפוקות צפויות החודש</label>
-                <span class="unit">תפוקות</span>
-                <input
-                  type="number"
-                  inputmode="decimal"
-                  id="nt_tifukot"
-                  placeholder="0"
-                  step="1"
-                  min="0"
-                  lang="en"
-                  autocomplete="off"
-                  oninput="calcNoTfuka()"
-                />
               </div>
               <div class="input-row">
                 <label>שעות עודפות (אם יש)</label>
@@ -883,6 +886,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260611j"></script>
+    <script src="app.js?v=20260611k"></script>
   </body>
 </html>
