@@ -786,11 +786,13 @@ function calc() {
       capStatusEl.className = 'cap-status under';
       capStatusEl.textContent = `מתחת לתקרה — חסר ${fmtILS(gap)}`;
     } else if (preCap - totalCeiling > 0.5) {
+      // the over-amount is the answer, not a parenthetical (her ask:
+      // "if its over write by how much so a person knows")
       capStatusEl.className = 'cap-status over';
-      capStatusEl.textContent = `על התקרה ✓ (עוד ${fmtILS(preCap - totalCeiling)} מעבר)`;
+      capStatusEl.textContent = `על התקרה ✓ — מעבר ב־${fmtILS(preCap - totalCeiling)}`;
     } else {
       capStatusEl.className = 'cap-status over';
-      capStatusEl.textContent = 'על התקרה ✓';
+      capStatusEl.textContent = 'על התקרה ✓ — בדיוק';
     }
   }
   // "(משותף לכל המרפאות)" is only information once a second clinic exists
