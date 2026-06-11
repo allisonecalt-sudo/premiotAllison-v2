@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260611i" />
+    <link rel="stylesheet" href="styles.css?v=20260611j" />
   </head>
   <body>
     <noscript>
@@ -67,11 +67,11 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ט׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 י׳</div>
     </div>
 
-    <!-- Tab Navigation -->
-    <div style="max-width: 720px; margin: 0 auto; padding: 16px 14px 0">
+    <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
+    <div class="tab-bar-wrap">
       <div class="tab-bar">
         <button id="tab-hours" class="tab-btn active" onclick="switchTab('hours')">
           חישוב שעות
@@ -230,22 +230,9 @@
             </div>
           </div>
 
-          <!-- The v1-style month reference she likes: every day, with holidays -->
-          <div class="section-title" style="margin-top: 18px">
-            <span>📅 פירוט החודש</span>
-            <div class="line"></div>
-          </div>
-          <div
-            id="ntDayReference"
-            style="
-              font-size: 12.5px;
-              line-height: 2;
-              background: var(--surface);
-              border: 1px solid var(--border);
-              border-radius: 10px;
-              padding: 10px 14px;
-            "
-          ></div>
+          <!-- The day-by-day month reference lives ONLY on the hours tab
+               (her call 2026-06-11: "only under חישוב שעות, not the other
+               page") — one home, no duplication. -->
         </div>
       </div>
     </div>
@@ -896,6 +883,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260611i"></script>
+    <script src="app.js?v=20260611j"></script>
   </body>
 </html>

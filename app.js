@@ -979,19 +979,17 @@ function calc() {
     }
   }
 
-  // ממוצע שנתי fail-loud (her ask, 2026-06-11: "I sometimes forget to put
-  // it in"). When the field is empty the calc silently pays ₪0 פרמיית
-  // העדרות — a quiet lie. Flag it exactly when it costs money: there ARE
-  // היעדרות-מזכה hours this month and the total isn't already capped
-  // (at cap the field changes nothing — don't nag). Prepended so it shows
-  // ALONGSIDE whatever other alert applies, never instead of it.
-  const anyMazaka = clinics.some((c) => (parseFloat(c.headrutMazaka) || 0) > 0);
-  const avgShnatiMissing = !emptyState && anyMazaka && !(avgShnati > 0) && !atOrOverCap;
+  // ממוצע שנתי is REQUIRED (her rule, 2026-06-11: "force this to be filled
+  // in" — she forgets it). Originally this only fired when it cost money;
+  // she upgraded it to always-on: any data + empty field = amber alert +
+  // amber field, every time. Prepended so it shows ALONGSIDE whatever other
+  // alert applies, never instead of it.
+  const avgShnatiMissing = !emptyState && !(avgShnati > 0);
   if (avgShnatiMissing) {
     alertArea.innerHTML =
       `<div class="alert warning" style="margin-bottom:8px;">
-      <div class="atitle">⚠️ חסר ממוצע שנתי</div>
-      <div class="abody">יש לך היעדרות מזכה החודש, ובלי ממוצע שנתי (מהתלוש) פרמיית ההעדרות מחושבת כ-0. הזיני אותו למעלה בפרטי עובדת.</div>
+      <div class="atitle">⚠️ חסר ממוצע שנתי — חובה למלא</div>
+      <div class="abody">בלי הממוצע השנתי (מהתלוש) פרמיית ההעדרות מחושבת כ-0. הזיני אותו למעלה בפרטי עובדת.</div>
     </div>` + alertArea.innerHTML;
   }
   document.getElementById('avgShnati').classList.toggle('field-missing', avgShnatiMissing);
@@ -1369,33 +1367,8 @@ function ntPullFromCalc() {
   calcNoTfuka();
 }
 
-// The v1-style day-by-day month reference Allison asked to bring back
-// (2026-06-10: "all the days of the week with the holidays... I like the
-// reference"). Lists every calendar day of the selected month with its
-// holiday status + potential hours + her combined hours across clinics.
-function renderNtMonthReference() {
-  const out = document.getElementById('ntDayReference');
-  if (!out) return;
-  const monthVal = hoursState.month || document.getElementById('hoursMonth').value;
-  if (!monthVal) {
-    out.innerHTML = '';
-    return;
-  }
-  // Merge work hours per weekday across all clinics (same gate as compute:
-  // checked + hrs > 0), then render with the shared day-by-day renderer —
-  // same rows as the hours-tab פירוט ימים, one source of truth.
-  const merged = {};
-  clinics.forEach((c) => {
-    const cdays = getClinicHoursDays(c.id);
-    for (let i = 0; i <= 5; i++) {
-      const rec = cdays[i];
-      if (rec && rec.checked && (parseFloat(rec.hrs) || 0) > 0) {
-        merged[i] = (merged[i] || 0) + parseFloat(rec.hrs);
-      }
-    }
-  });
-  out.innerHTML = monthDayRows(merged, monthVal);
-}
+// (renderNtMonthReference removed 2026-06-11 — her call: the day-by-day
+// month list lives ONLY on the hours tab. monthDayRows is its one renderer.)
 
 // Linked editing (her ask 2026-06-11: "so they can see if scenarios change
 // how much they don't have to do"): anything that changes שעות עבודה — שלט,
@@ -1500,13 +1473,18 @@ function calcNoTfuka() {
     const nothingNow = Math.max(0, mecane - expected);
     const within = mecane <= maxMecane + 0.05;
     const slack = maxMecane - mecane;
-    html += `<div class="total-box" style="margin-bottom:12px;">
+    // The verdict is the calc-ribbon grammar (her ask 2026-06-11: "like
+    // you're not reaching ceiling or you're over"): reaching the cap =
+    // green; NOT reaching = the whole answer goes loud red — number AND a
+    // bold verdict line, not a whisper under a calm number.
+    html += `<div class="total-box" style="margin-bottom:12px;${within ? '' : ' border-color:var(--danger);'}">
       <div class="tlabel">שעות ללא תפוקות <button class="tip-btn" data-tip="ntNothing">?</button></div>
-      <div class="tamount">${nothingNow.toFixed(1)} שעות</div>
+      <div class="tamount"${within ? '' : ' style="color:var(--danger);"'}>${nothingNow.toFixed(1)} שעות</div>
       <div class="tsub">${
         within
           ? `${capNote} ✓${slack > 0.1 ? ` — יש מקום לעוד ${slack.toFixed(1)} שעות כאלה` : ''}`
-          : `יותר מדי — הפרמיה תרד מתחת לתקרה. עודף של ${(mecane - maxMecane).toFixed(1)} שעות: עוד תפוקות או העברה לשלט`
+          : `<span style="color:var(--danger); font-weight:800; font-size:14px;">⚠️ לא מגיעים לתקרה</span><br>
+             <span style="color:var(--danger); font-weight:600;">עודף של ${(mecane - maxMecane).toFixed(1)} שעות — עוד תפוקות או העברה לשלט</span>`
       }</div>
     </div>`;
   }
@@ -1580,7 +1558,6 @@ function switchTab(tab) {
   document.getElementById('tab-notfuka').classList.toggle('active', tab === 'notfuka');
   if (tab === 'notfuka') {
     ntPullFromCalc();
-    renderNtMonthReference();
   }
   if (tab === 'hours') {
     // Re-render hours sections in case clinics were added/removed/renamed

@@ -114,7 +114,8 @@ body {
 
 .sticky-result {
   position: sticky;
-  top: 0;
+  /* sits flush under the frozen tab bar */
+  top: 72px;
   z-index: 50;
   background: var(--bg);
   /* Side padding (was 0) so a 4-digit premia (e.g. ₪1,282.72) doesn't kiss the
@@ -715,6 +716,18 @@ select option {
  * One accent at a time. Most buttons are neutral; only the *active* tab and
  * the primary CTA carry color. Status colors live in alerts, not chrome.
  */
+/* Frozen tab bar (her ask 2026-06-11: "this should be frozen at top").
+   Height is fixed by its parts: 10 + (4+44+4+2) + 8 = 72px — the calc tab's
+   sticky-result stacks directly under it via --tabbar-h. */
+.tab-bar-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--bg);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 10px 14px 8px;
+}
 .tab-bar {
   display: flex;
   gap: 0;
