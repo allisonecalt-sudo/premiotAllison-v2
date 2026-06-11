@@ -953,6 +953,13 @@ select option {
   color: var(--muted);
 }
 
+/* A required field the calc is waiting on (ממוצע שנתי when there's היעדרות
+   מזכה and no value) — amber, matching the alert that points at it. */
+.input-row input.field-missing {
+  border-color: var(--warning);
+  background: var(--warning-bg);
+}
+
 /* Read-only field treatment — אומר ל-Allison: השדה הזה מגיע מטאב שעות,
    לא מקלידים אותו ישירות. Keeps tabular-nums + alignment but mutes chrome
    and disables the focus-ring. */

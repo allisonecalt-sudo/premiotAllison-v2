@@ -637,9 +637,9 @@ function calc() {
       const el = card.querySelector(`[data-readout="${key}"]`);
       if (el) el.textContent = txt;
     };
+    // (משרה + תקרה body rows removed 2026-06-11 — the header mini-stats
+    // already show them; setMini below is their one home now)
     setReadout('shaAvoda', r.shaAvoda.toFixed(2));
-    setReadout('mishraPct', (r.mishraPct * 100).toFixed(1) + '%');
-    setReadout('takaraClinic', fmtILS(r.takaraClinic));
     setReadout('premiatAvoda', fmtILS(r.premiatAvoda));
     setReadout('premiatHeadrut', fmtILS(r.premiatHeadrut));
 
@@ -775,37 +775,11 @@ function calc() {
   // month-over-month diff
   updateMonthDiff(totalPremium);
 
-  // Progress bar block
-  const gapToTakara = totalCeiling - totalPremium;
-  const progressPct = totalCeiling > 0 ? Math.min((totalPremium / totalCeiling) * 100, 100) : 0;
+  // The התקדמות-לתקרה progress block that rendered here was removed
+  // 2026-06-11 (her call): it duplicated the frozen ribbon exactly — same
+  // bar, same %, same numbers, both always on screen. atOrOverCap stays;
+  // the alert logic below uses it.
   const atOrOverCap = totalCeiling > 0 && totalPremium >= totalCeiling - 0.5;
-  const progressColor = !hasData
-    ? '#a09e96'
-    : progressPct >= 75
-      ? '#2d6a4f'
-      : progressPct >= 40
-        ? '#b5621a'
-        : '#c0392b';
-  // (hasData defined above in sticky-result block — premium > 0 AND cap > 0)
-
-  document.getElementById('takaraProgress').innerHTML =
-    totalCeiling > 0
-      ? `
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-        <span style="font-size:12px; color:var(--muted);">התקדמות לתקרה</span>
-        <span style="font-size:12px; font-weight:700; color:${progressColor};">${progressPct.toFixed(1)}%</span>
-      </div>
-      <div style="background:var(--surface-3); border-radius:99px; height:10px; overflow:hidden;">
-        <div style="width:${progressPct}%; height:100%; background:${progressColor}; border-radius:99px; transition:width 0.4s;"></div>
-      </div>
-      <div style="display:flex; justify-content:space-between; margin-top:7px;">
-        <span style="font-size:11px; color:var(--muted);">פרמיה: ${fmtILS(totalPremium)}</span>
-        <span style="font-size:11px; color:var(--muted);">תקרה: ${fmtILS(totalCeiling)}</span>
-      </div>
-      ${atOrOverCap ? '' : `<div style="margin-top:6px; font-size:12px; color:var(--warning); text-align:center;">חסר עד התקרה: ${fmtILS(gapToTakara)}</div>`}
-    </div>`
-      : '';
 
   // ---- Together-vs-separate comparison (2-machon workers) ----
   // Clalit's premia reports flip between computing each machon separately and
@@ -974,6 +948,23 @@ function calc() {
         suggestions;
     }
   }
+
+  // ממוצע שנתי fail-loud (her ask, 2026-06-11: "I sometimes forget to put
+  // it in"). When the field is empty the calc silently pays ₪0 פרמיית
+  // העדרות — a quiet lie. Flag it exactly when it costs money: there ARE
+  // היעדרות-מזכה hours this month and the total isn't already capped
+  // (at cap the field changes nothing — don't nag). Prepended so it shows
+  // ALONGSIDE whatever other alert applies, never instead of it.
+  const anyMazaka = clinics.some((c) => (parseFloat(c.headrutMazaka) || 0) > 0);
+  const avgShnatiMissing = !emptyState && anyMazaka && !(avgShnati > 0) && !atOrOverCap;
+  if (avgShnatiMissing) {
+    alertArea.innerHTML =
+      `<div class="alert warning" style="margin-bottom:8px;">
+      <div class="atitle">⚠️ חסר ממוצע שנתי</div>
+      <div class="abody">יש לך היעדרות מזכה החודש, ובלי ממוצע שנתי (מהתלוש) פרמיית ההעדרות מחושבת כ-0. הזיני אותו למעלה בפרטי עובדת.</div>
+    </div>` + alertArea.innerHTML;
+  }
+  document.getElementById('avgShnati').classList.toggle('field-missing', avgShnatiMissing);
 
   // Auto-open the פירוט drill-down when result exists, only first time
   maybeAutoOpenDetail(totalPremium > 0 && anyClinicHasInput);

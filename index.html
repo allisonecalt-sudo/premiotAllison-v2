@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260611a" />
+    <link rel="stylesheet" href="styles.css?v=20260611b" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 א׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ב׳</div>
     </div>
 
     <!-- Tab Navigation -->
@@ -452,9 +452,13 @@
           <div class="tamount" id="r_total">₪0.00</div>
           <div class="tsub" id="r_total_sub">—</div>
         </div>
+        <!-- (the old התקדמות-לתקרה bar lived here — removed 2026-06-11, her
+             call: it duplicated the frozen ribbon exactly, both always visible) -->
 
-        <!-- Progress toward תקרה -->
-        <div id="takaraProgress" style="margin-top: 14px"></div>
+        <!-- Alert area (threshold warnings / הגעת לתקרה) — directly under the
+             big number so a result and its verdict read as one unit (her call,
+             2026-06-11; the explainer used to sit between them) -->
+        <div id="alertArea" style="margin-top: 10px"></div>
 
         <!-- Plain-words explainer — the real reason this app exists: the tlush
              premia line confuses people. One short, collapsed explanation of
@@ -486,9 +490,6 @@
              have input. Clalit is inconsistent about which method it uses,
              so both are shown for checking against the premia report. -->
         <div id="compareArea" style="margin-top: 10px"></div>
-
-        <!-- Alert area (threshold warnings) -->
-        <div id="alertArea" style="margin-top: 10px"></div>
 
         <!-- Suggestions -->
         <div id="suggestArea" style="margin-top: 10px"></div>
@@ -830,7 +831,9 @@
             />
           </div>
 
-          <!-- Per-clinic readouts -->
+          <!-- Per-clinic readouts. משרה + תקרה rows removed 2026-06-11 (her
+               call): the always-visible mini-stats on the card header already
+               show both — same numbers twice on one card. -->
           <div class="section-title">
             <span>🎯 לפי המרפאה הזו</span>
             <div class="line"></div>
@@ -838,14 +841,6 @@
           <div class="result-row" style="border: none; background: none">
             <span class="rlabel">שעות עבודה (מחושב)</span>
             <span class="rvalue kpi muted" data-readout="shaAvoda">0.00</span>
-          </div>
-          <div class="result-row" style="border: none; background: none">
-            <span class="rlabel">אחוז משרה במרפאה</span>
-            <span class="rvalue kpi" data-readout="mishraPct">—</span>
-          </div>
-          <div class="result-row" style="border: none; background: none">
-            <span class="rlabel">תקרת תשלום במרפאה</span>
-            <span class="rvalue kpi" data-readout="takaraClinic">—</span>
           </div>
           <div class="result-row accent" style="border: none">
             <span class="rlabel">פרמיית עבודה</span>
@@ -860,6 +855,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260611a"></script>
+    <script src="app.js?v=20260611b"></script>
   </body>
 </html>
