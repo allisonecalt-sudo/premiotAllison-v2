@@ -1024,27 +1024,44 @@ function updateChips(results) {
     .join('');
 }
 
+// Month-over-month line on the ribbon. REWRITTEN 2026-06-11 (her catch): the
+// old version stamped a single "last total" on EVERY recalc, so the line
+// actually showed the delta of your last edit while claiming "מול חודש
+// קודם" — a lie. Now: a per-month ledger; the diff compares the selected
+// month against the month BEFORE it (dropdown order), in explicit words —
+// how much over / how much under (her ask) — naming the month compared to.
 function updateMonthDiff(currentTotal) {
   const el = document.getElementById('monthDiff');
   if (!el) return;
+  el.className = 'month-diff';
+  el.textContent = '';
   try {
-    const lastRaw = localStorage.getItem('premiot_last_month_total');
-    if (lastRaw && currentTotal > 0) {
-      const last = parseFloat(lastRaw);
-      if (isFinite(last) && Math.abs(last - currentTotal) > 0.5) {
-        const diff = currentTotal - last;
-        const sign = diff >= 0 ? '+' : '−';
-        const cls = diff >= 0 ? 'up' : 'down';
-        el.className = 'month-diff ' + cls;
-        el.textContent = `מול חודש קודם: ${sign}${fmtILS(Math.abs(diff))}`;
-      } else {
-        el.textContent = '';
-      }
-    } else {
-      el.textContent = '';
+    const sel = document.getElementById('selectedMonth');
+    const monthName = sel ? sel.value : '';
+    let ledger = {};
+    try {
+      ledger = JSON.parse(localStorage.getItem('premiot_month_totals') || '{}') || {};
+    } catch (e) {
+      ledger = {};
     }
-    if (currentTotal > 0) {
-      localStorage.setItem('premiot_last_month_total', String(currentTotal));
+    if (monthName && currentTotal > 0) {
+      ledger[monthName] = currentTotal;
+      localStorage.setItem('premiot_month_totals', JSON.stringify(ledger));
+    }
+    if (!monthName || currentTotal <= 0 || sel.selectedIndex <= 0) return;
+    const prevName = sel.options[sel.selectedIndex - 1].value;
+    const prev = parseFloat(ledger[prevName]);
+    // Only compare against a month that was really calculated here — no fake
+    if (!isFinite(prev) || prev <= 0) return;
+    const diff = currentTotal - prev;
+    if (Math.abs(diff) <= 0.5) {
+      el.textContent = `כמו ב־${prevName}`;
+    } else if (diff > 0) {
+      el.className = 'month-diff up';
+      el.textContent = `${fmtILS(diff)} יותר מ־${prevName}`;
+    } else {
+      el.className = 'month-diff down';
+      el.textContent = `${fmtILS(-diff)} פחות מ־${prevName}`;
     }
   } catch (e) {
     /* ignore */
@@ -1163,7 +1180,8 @@ function resetFields() {
     localStorage.removeItem(LEGACY_KEY);
     localStorage.removeItem(HOURS_KEY_V2);
     localStorage.removeItem(HOURS_KEY_LEGACY);
-    localStorage.removeItem('premiot_last_month_total');
+    localStorage.removeItem('premiot_last_month_total'); // legacy key
+    localStorage.removeItem('premiot_month_totals');
   } catch (e) {
     /* ignore */
   }
