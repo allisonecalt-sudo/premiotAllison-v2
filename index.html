@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260610i" />
+    <link rel="stylesheet" href="styles.css?v=20260611a" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 10.6 ט׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 א׳</div>
     </div>
 
     <!-- Tab Navigation -->
@@ -94,8 +94,10 @@
             <div class="line"></div>
           </div>
           <div style="font-size: 11px; color: var(--muted); margin: 4px 0 12px">
-            <span id="ntSyncNote" style="display: none">מסונכרן עם המחשבון ✓ · </span>השעות והתפוקות
-            נמשכות אוטומטית — אפשר לערוך למטה
+            <!-- JS swaps the first phrase: synced = "מסונכרן עם המחשבון ✓",
+                 nothing pulled yet = "השעות נמשכות אוטומטית מהמחשבון". The old
+                 version showed both at once — the same fact twice. -->
+            <span id="ntSyncNote">השעות נמשכות אוטומטית מהמחשבון</span> · אפשר לערוך למטה
           </div>
 
           <!-- THE answer first — everything below is supporting detail -->
@@ -300,6 +302,14 @@
                 <span id="stickyTakara">תקרה: —</span>
               </div>
             </div>
+            <!-- משרה sits next to the bar because they're the same fact in two
+                 units: תקרה = אחוז משרה × 5400. For a capped worker (Allison's
+                 own case) משרה is the ONLY number that moves the premia — it
+                 earns frozen-ribbon space (her ask, 2026-06-11). -->
+            <div class="avg-block">
+              <div class="label">משרה</div>
+              <div id="r_mishra_sticky" class="value">—</div>
+            </div>
             <div class="avg-block">
               <div class="label">ממוצע</div>
               <div id="r_avg_sticky" class="value">—</div>
@@ -326,7 +336,9 @@
         <!-- SHARED EMPLOYEE STRIP (above clinics, distinct treatment) -->
         <div class="shared-strip" id="sharedStrip">
           <div class="strip-title">
-            <span>👤 פרטי עובדת (משותף לכל המרפאות)</span>
+            <!-- The parenthetical only means something once a second clinic
+                 exists — with one clinic it's noise; JS shows it at 2+. -->
+            <span>👤 פרטי עובדת <span id="sharedScopeNote">(משותף לכל המרפאות)</span></span>
             <button
               type="button"
               class="strip-edit"
@@ -461,8 +473,9 @@
               • עוד תפוקות (טיפולים מקודדים ב-Clicks)<br />
               • להעביר שעות לשלט — פחות שעות "רגילות" מעלה את הממוצע
               <br /><br />
-              יש <strong>תקרה</strong> — מעבר אליה לא משלמים יותר, גם אם נתת עוד טיפולים.
-              <br /><span style="color: var(--muted); font-size: 12px"
+              יש <strong>תקרה</strong> — מעבר אליה לא משלמים יותר, גם אם נתת עוד טיפולים. גובה התקרה
+              נקבע לפי <strong>אחוז המשרה</strong> שלך — לכן ימי מחלה (היעדרות לא מזכה) מורידים את
+              התקרה עצמה. <br /><span style="color: var(--muted); font-size: 12px"
                 >קיבלת פחות מהצפוי? בדקי שכל הטיפולים נספרו ב-Clicks.</span
               >
             </div>
@@ -529,28 +542,49 @@
             <span id="arrow_detailCalc" class="arrow">▼</span>
           </button>
           <div id="detailCalc" class="disclosure-panel">
+            <!-- Every row here is tlush jargon — each gets a help-dot. This
+                 drill-down is exactly where a confused OT lands when her
+                 number doesn't match; the dots are the explanation layer. -->
             <div class="result-row" style="border: none; background: none">
-              <span class="rlabel">אחוז משרה בפועל (סך כל המרפאות)</span>
+              <span class="rlabel">
+                <button class="tip-btn" data-tip="mishra">?</button>
+                אחוז משרה בפועל (סך כל המרפאות)
+              </span>
               <span class="rvalue kpi" id="r_mishra">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
-              <span class="rlabel">תקרת תשלום לחודש (סך כל המרפאות)</span>
+              <span class="rlabel">
+                <button class="tip-btn" data-tip="takara">?</button>
+                תקרת תשלום לחודש (סך כל המרפאות)
+              </span>
               <span class="rvalue kpi" id="r_takara">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
-              <span class="rlabel">טיפולים משוקללים (סך)</span>
+              <span class="rlabel">
+                <button class="tip-btn" data-tip="makdam">?</button>
+                טיפולים משוקללים (סך)
+              </span>
               <span class="rvalue kpi muted" id="r_tipulim">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
-              <span class="rlabel">מכנה — שעות מושקעות (סך)</span>
+              <span class="rlabel">
+                <button class="tip-btn" data-tip="mecane">?</button>
+                מכנה — שעות מושקעות (סך)
+              </span>
               <span class="rvalue kpi muted" id="r_mecane">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
-              <span class="rlabel">ממוצע טיפולים לתשלום (משוקלל)</span>
+              <span class="rlabel">
+                <button class="tip-btn" data-tip="avgTashlum">?</button>
+                ממוצע טיפולים לתשלום (משוקלל)
+              </span>
               <span class="rvalue kpi" id="r_avg">—</span>
             </div>
             <div class="result-row" style="border: none; background: none">
-              <span class="rlabel">סך שעות לתשלום (סך)</span>
+              <span class="rlabel">
+                <button class="tip-btn" data-tip="shaTashlum">?</button>
+                סך שעות לתשלום (סך)
+              </span>
               <span class="rvalue kpi muted" id="r_totalHours">—</span>
             </div>
           </div>
@@ -826,6 +860,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260610i"></script>
+    <script src="app.js?v=20260611a"></script>
   </body>
 </html>

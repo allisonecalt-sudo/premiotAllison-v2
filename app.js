@@ -60,6 +60,14 @@ const TIPS = {
     'ממוצע הטיפולים לתשלום של 12 החודשים הקודמים.\nמשמש לחישוב פרמיית ההעדרות.\nהכנס ידנית מהתלוש החודשי.',
   shalet:
     'כשמעבירים שעות עבודה לשלט:\n• המכנה קטן ← ממוצע עולה\n• סך שעות לתשלום לא משתנה\n• התקרה לא משתנה',
+  mishra:
+    'אחוז המשרה בפועל החודש:\n(שעות תקן − היעדרות לא מזכה + עודפות) ÷ שעות פוטנציאליות.\n\nהתקרה שלך = אחוז המשרה × התקרה המלאה.\nלכן ימי מחלה מקטינים את התקרה.',
+  mecane:
+    'שעות העבודה בפועל:\nשעות תקן − היעדרויות − שלט + עודפות.\n\nהטיפולים מחולקים בשעות האלה — פחות מכנה = ממוצע גבוה יותר.',
+  avgTashlum:
+    'כמה הממוצע שלך מעל הרף (1.0), עד מקסימום 1:\nטיפולים משוקללים ÷ מכנה, פחות 1.\n\nזה ה"ממוצע לתשלום" שמופיע בפירוט הפרמיה.',
+  shaTashlum:
+    'השעות שהפרמיה משולמת עליהן:\nשעות תקן − היעדרויות + עודפות (השלט נשאר בפנים).\n\nפרמיית עבודה = שעות לתשלום × ממוצע × תעריף.',
 };
 
 // Tooltip popup (built once)
@@ -696,9 +704,13 @@ function calc() {
 
   set('r_tipulim', totalTipulim.toFixed(0), 'טיפולים');
   set('r_mecane', totalMecane.toFixed(2), 'שעות');
-  set('r_avg', combinedAvgClamped.toFixed(3), combinedAvgClamped >= 1 ? '(מקסימום ✓)' : '');
+  // "✓" alone — the old "(מקסימום ✓)" suffix broke across lines in RTL with
+  // the ✓ orphaned; the tip on this row now explains that 1 is the max.
+  set('r_avg', combinedAvgClamped.toFixed(3), combinedAvgClamped >= 1 ? '✓' : '');
   set('r_totalHours', totalHoursLeTashlum.toFixed(2), 'שעות');
-  set('r_mishra', (totalMishraPct * 100).toFixed(1), '%');
+  // One token ("87.5%"), not value + unit — a spaced "%" jumps to the wrong
+  // side of the number in RTL.
+  set('r_mishra', (totalMishraPct * 100).toFixed(1) + '%');
   document.getElementById('r_takara').textContent = fmtILS(totalCeiling);
 
   // ---- Per-clinic breakdown in drill-down ----
@@ -748,6 +760,14 @@ function calc() {
   document.getElementById('r_avg_sticky').textContent = emptyState
     ? '—'
     : combinedAvgClamped.toFixed(3);
+  // משרה on the frozen ribbon (her ask, 2026-06-11). Same empty-state gate as
+  // ממוצע. One decimal matches the clinic mini-stats.
+  document.getElementById('r_mishra_sticky').textContent = emptyState
+    ? '—'
+    : (totalMishraPct * 100).toFixed(1) + '%';
+  // "(משותף לכל המרפאות)" is only information once a second clinic exists
+  const scopeNote = document.getElementById('sharedScopeNote');
+  if (scopeNote) scopeNote.style.display = clinics.length > 1 ? '' : 'none';
 
   // chips per-clinic in sticky (only when multi)
   updateChips(results);
@@ -1339,7 +1359,8 @@ function ntPullFromCalc() {
     if (sum > 0) pulledAny = true;
   });
   const note = document.getElementById('ntSyncNote');
-  if (note) note.style.display = pulledAny ? '' : 'none';
+  if (note)
+    note.textContent = pulledAny ? 'מסונכרן עם המחשבון ✓' : 'השעות נמשכות אוטומטית מהמחשבון';
   calcNoTfuka();
 }
 
@@ -2158,7 +2179,8 @@ maybeLockShared();
 calc();
 
 // Fresh user with no data → land on Hours tab so they get the natural
-// "fill hours first" flow. Returning users land on calc as before.
-if (_freshLoad) {
-  switchTab('hours');
-}
+// "fill hours first" flow. Returning users land on calc — and switchTab must
+// run for them too: the HTML hardcodes the active class on tab-hours while
+// panel-calc is the visible panel, so skipping the call left returning users
+// with the WRONG tab highlighted (caught 2026-06-11).
+switchTab(_freshLoad ? 'hours' : 'calc');
