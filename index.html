@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260611f" />
+    <link rel="stylesheet" href="styles.css?v=20260611g" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ו׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ז׳</div>
     </div>
 
     <!-- Tab Navigation -->
@@ -89,8 +89,12 @@
     <div id="panel-notfuka" style="display: none">
       <div class="container">
         <div style="max-width: 720px">
+          <!-- NEVER phrase this concept with טיפולים-language — "שעות לא
+               טיפוליות" is what של"ט means, and mixing the words confuses the
+               two (her rule, 2026-06-11). This page is about hours WITHOUT
+               TFUKOT — ביטולים, holes in the day. -->
           <div class="section-title">
-            <span>כמה שעות לא צריכות טיפולים?</span>
+            <span>כמה שעות יכולות להישאר בלי תפוקה?</span>
             <div class="line"></div>
           </div>
           <div style="font-size: 11px; color: var(--muted); margin: 4px 0 12px">
@@ -103,11 +107,71 @@
           <!-- THE answer first — everything below is supporting detail -->
           <div id="noTfukaResults" style="margin-bottom: 14px"></div>
 
-          <!-- Inputs, synced from the calculator on every visit; collapsed
-               because most months nothing needs touching -->
-          <div style="margin-top: 8px">
+          <!-- The levers, VISIBLE (her ask 2026-06-11): change שלט and
+               היעדרויות right here — synced to the calculator — and watch
+               how many hours can stay empty (ביטולים). They were buried in
+               the collapsed panel; playing with them IS this page's job. -->
+          <div class="section-title">
+            <span>✏️ שלט והיעדרויות</span>
+            <div class="line"></div>
+          </div>
+          <div class="input-row">
+            <label>
+              <button class="tip-btn" data-tip="shalet">?</button>
+              שעות שלט
+            </label>
+            <span class="unit">שעות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_shalat"
+              data-link="shaLaTipulit"
+              placeholder="0"
+              step="0.5"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="ntFieldInput(this)"
+            />
+          </div>
+          <div class="input-row">
+            <label>היעדרות מזכה (מחלה, חופש)</label>
+            <span class="unit">שעות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_mazaka"
+              data-link="headrutMazaka"
+              placeholder="0"
+              step="0.5"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="ntFieldInput(this)"
+            />
+          </div>
+          <div class="input-row">
+            <label>היעדרות לא מזכה</label>
+            <span class="unit">שעות</span>
+            <input
+              type="number"
+              inputmode="decimal"
+              id="nt_loMazaka"
+              data-link="headrutLoMazaka"
+              placeholder="0"
+              step="0.5"
+              min="0"
+              lang="en"
+              autocomplete="off"
+              oninput="ntFieldInput(this)"
+            />
+          </div>
+
+          <!-- The rest of the inputs, synced from the calculator; collapsed
+               because most months nothing here needs touching -->
+          <div style="margin-top: 12px">
             <button onclick="toggleSection('ntInputs')" class="disclosure-btn">
-              <span>✏️ עריכת הנתונים</span>
+              <span>✏️ עריכת שאר הנתונים</span>
               <span id="arrow_ntInputs" class="arrow">▼</span>
             </button>
             <div id="ntInputs" class="disclosure-panel">
@@ -124,57 +188,6 @@
                   lang="en"
                   autocomplete="off"
                   oninput="calcNoTfuka()"
-                />
-              </div>
-              <div class="input-row">
-                <label>
-                  <button class="tip-btn" data-tip="shalet">?</button>
-                  שעות שלא לטיפולים (שלט)
-                </label>
-                <span class="unit">שעות</span>
-                <input
-                  type="number"
-                  inputmode="decimal"
-                  id="nt_shalat"
-                  data-link="shaLaTipulit"
-                  placeholder="0"
-                  step="0.5"
-                  min="0"
-                  lang="en"
-                  autocomplete="off"
-                  oninput="ntFieldInput(this)"
-                />
-              </div>
-              <div class="input-row">
-                <label>היעדרות מזכה (מחלה, חופש)</label>
-                <span class="unit">שעות</span>
-                <input
-                  type="number"
-                  inputmode="decimal"
-                  id="nt_mazaka"
-                  data-link="headrutMazaka"
-                  placeholder="0"
-                  step="0.5"
-                  min="0"
-                  lang="en"
-                  autocomplete="off"
-                  oninput="ntFieldInput(this)"
-                />
-              </div>
-              <div class="input-row">
-                <label>היעדרות לא מזכה</label>
-                <span class="unit">שעות</span>
-                <input
-                  type="number"
-                  inputmode="decimal"
-                  id="nt_loMazaka"
-                  data-link="headrutLoMazaka"
-                  placeholder="0"
-                  step="0.5"
-                  min="0"
-                  lang="en"
-                  autocomplete="off"
-                  oninput="ntFieldInput(this)"
                 />
               </div>
               <div class="input-row">
@@ -877,6 +890,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260611f"></script>
+    <script src="app.js?v=20260611g"></script>
   </body>
 </html>
