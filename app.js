@@ -765,20 +765,40 @@ function calc() {
   document.getElementById('r_mishra_sticky').textContent = emptyState
     ? '—'
     : (totalMishraPct * 100).toFixed(1) + '%';
-  // Month on the ribbon (her ask, 2026-06-11) — context for every frozen number
+  // Month, big, at the top of the ribbon (her ask, 2026-06-11)
   const stickyMonthName = document.getElementById('selectedMonth').value;
-  document.getElementById('stickyMonth').textContent = stickyMonthName
-    ? '· ' + stickyMonthName
-    : '';
+  const monthBigEl = document.getElementById('stickyMonthBig');
+  monthBigEl.textContent = stickyMonthName || '';
+  monthBigEl.style.display = stickyMonthName ? '' : 'none';
+
+  // Under-or-over THIS month's cap — the one verdict she wants on the ribbon
+  // (2026-06-11: "i just want am i under or over this month"). Under = the
+  // gap in shekels; at/over = checkmark, with the pre-cap surplus when there
+  // is one (proof of margin — not paid beyond the cap).
+  const capStatusEl = document.getElementById('capStatus');
+  if (!hasData) {
+    capStatusEl.textContent = '';
+    capStatusEl.className = 'cap-status';
+  } else {
+    const preCap = totalAvodaBefore + totalHeadrutBefore;
+    const gap = totalCeiling - totalPremium;
+    if (gap > 0.5) {
+      capStatusEl.className = 'cap-status under';
+      capStatusEl.textContent = `מתחת לתקרה — חסר ${fmtILS(gap)}`;
+    } else if (preCap - totalCeiling > 0.5) {
+      capStatusEl.className = 'cap-status over';
+      capStatusEl.textContent = `על התקרה ✓ (עוד ${fmtILS(preCap - totalCeiling)} מעבר)`;
+    } else {
+      capStatusEl.className = 'cap-status over';
+      capStatusEl.textContent = 'על התקרה ✓';
+    }
+  }
   // "(משותף לכל המרפאות)" is only information once a second clinic exists
   const scopeNote = document.getElementById('sharedScopeNote');
   if (scopeNote) scopeNote.style.display = clinics.length > 1 ? '' : 'none';
 
   // chips per-clinic in sticky (only when multi)
   updateChips(results);
-
-  // month-over-month diff
-  updateMonthDiff(totalPremium);
 
   // The התקדמות-לתקרה progress block that rendered here was removed
   // 2026-06-11 (her call): it duplicated the frozen ribbon exactly — same
@@ -1024,49 +1044,8 @@ function updateChips(results) {
     .join('');
 }
 
-// Month-over-month line on the ribbon. REWRITTEN 2026-06-11 (her catch): the
-// old version stamped a single "last total" on EVERY recalc, so the line
-// actually showed the delta of your last edit while claiming "מול חודש
-// קודם" — a lie. Now: a per-month ledger; the diff compares the selected
-// month against the month BEFORE it (dropdown order), in explicit words —
-// how much over / how much under (her ask) — naming the month compared to.
-function updateMonthDiff(currentTotal) {
-  const el = document.getElementById('monthDiff');
-  if (!el) return;
-  el.className = 'month-diff';
-  el.textContent = '';
-  try {
-    const sel = document.getElementById('selectedMonth');
-    const monthName = sel ? sel.value : '';
-    let ledger = {};
-    try {
-      ledger = JSON.parse(localStorage.getItem('premiot_month_totals') || '{}') || {};
-    } catch (e) {
-      ledger = {};
-    }
-    if (monthName && currentTotal > 0) {
-      ledger[monthName] = currentTotal;
-      localStorage.setItem('premiot_month_totals', JSON.stringify(ledger));
-    }
-    if (!monthName || currentTotal <= 0 || sel.selectedIndex <= 0) return;
-    const prevName = sel.options[sel.selectedIndex - 1].value;
-    const prev = parseFloat(ledger[prevName]);
-    // Only compare against a month that was really calculated here — no fake
-    if (!isFinite(prev) || prev <= 0) return;
-    const diff = currentTotal - prev;
-    if (Math.abs(diff) <= 0.5) {
-      el.textContent = `כמו ב־${prevName}`;
-    } else if (diff > 0) {
-      el.className = 'month-diff up';
-      el.textContent = `${fmtILS(diff)} יותר מ־${prevName}`;
-    } else {
-      el.className = 'month-diff down';
-      el.textContent = `${fmtILS(-diff)} פחות מ־${prevName}`;
-    }
-  } catch (e) {
-    /* ignore */
-  }
-}
+// (updateMonthDiff removed 2026-06-11 — "i dont care abt previous month at
+// all." The ribbon verdict is now under/over THIS month's cap, set in calc().)
 
 function setVetek(isVetek, skipCalc) {
   document.getElementById('takara').value = isVetek ? 5838.25 : 5400;

@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260611d" />
+    <link rel="stylesheet" href="styles.css?v=20260611e" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ד׳</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ה׳</div>
     </div>
 
     <!-- Tab Navigation -->
@@ -292,11 +292,12 @@
       <div class="container">
         <!-- STICKY RESULT — always visible while scrolling -->
         <div class="sticky-result">
+          <!-- The month, big, first — her ask 2026-06-11: "in big at top it
+               says what month it is" -->
+          <div id="stickyMonthBig" class="sticky-month"></div>
           <div style="display: flex; align-items: center; gap: 12px; justify-content: center">
             <div class="total-block" style="text-align: center">
-              <!-- Month rides in the label (her ask 2026-06-11: "month also on
-                   ribbon") — zero extra height on a frozen strip -->
-              <div class="label">סך פרמיה <span id="stickyMonth"></span></div>
+              <div class="label">סך פרמיה</div>
               <div id="r_total_sticky" class="value">₪0.00</div>
             </div>
             <div style="flex: 1; max-width: 200px">
@@ -322,7 +323,10 @@
             </div>
           </div>
           <div id="clinicChips" class="clinic-chips"></div>
-          <div id="monthDiff" class="month-diff"></div>
+          <!-- THE verdict for this month — her ask 2026-06-11: "i just want
+               am i under or over this month". Replaces the month-over-month
+               diff ("i dont care abt previous month at all"). -->
+          <div id="capStatus" class="cap-status"></div>
         </div>
 
         <!-- Month FIRST — which month is this premia for? (Allison 2026-06-10:
@@ -873,6 +877,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260611d"></script>
+    <script src="app.js?v=20260611e"></script>
   </body>
 </html>

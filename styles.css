@@ -687,18 +687,28 @@ select option {
   font-variant-numeric: tabular-nums;
 }
 
-.month-diff {
-  margin-top: 4px;
+/* Month, big, first thing on the frozen ribbon (her ask 2026-06-11) */
+.sticky-month {
   text-align: center;
-  font-size: 11px;
-  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  margin-bottom: 5px;
+}
+/* The one verdict line: under/over THIS month's cap */
+.cap-status {
+  margin-top: 5px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.month-diff.up {
+.cap-status.over {
   color: var(--success);
 }
-.month-diff.down {
-  color: var(--danger);
+.cap-status.under {
+  color: var(--warning);
 }
 
 /* ===== Button system — added in calm-pass 2026-05-24 =====
