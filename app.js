@@ -1370,13 +1370,14 @@ function ntPullFromCalc() {
 // (renderNtMonthReference removed 2026-06-11 — her call: the day-by-day
 // month list lives ONLY on the hours tab. monthDayRows is its one renderer.)
 
-// Linked editing (her ask 2026-06-11: "so they can see if scenarios change
-// how much they don't have to do"): anything that changes שעות עבודה — שלט,
-// עודפות, both היעדרויות — edited HERE writes back to the calculator, so a
-// scenario isn't a detached sandbox. Only with ONE clinic: with 2+ the nt
-// fields are sums across clinics and a write-back would be ambiguous — then
-// edits stay local and the sync note says so. תקן stays owned by the hours
-// tab; תפוקות צפויות stays a local what-if.
+// Linked editing — the two pages are ONE data set (her ask 2026-06-11 "so
+// they can see if scenarios change how much they don't have to do" → 2026-06-14
+// "exactly the same data points interchangeable"): EVERY input that exists on
+// both pages — שלט, עודפות, both היעדרויות, AND תפוקות — edited HERE writes
+// back to the calculator. Only the OUTPUT differs (ceiling view vs
+// hours-require-nothing view). Only with ONE clinic: with 2+ the nt fields are
+// sums across clinics and a write-back would be ambiguous — then edits stay
+// local and the sync note says so. תקן stays owned by the hours tab.
 function ntFieldInput(input) {
   const field = input.getAttribute('data-link');
   if (field && clinics.length === 1) {
