@@ -60,7 +60,7 @@ const TIPS = {
   tifukot:
     'קודי תפוקה ב-Clicks:\n• 50011 - טיפול\n• 50008 - אבחון\n• 50016 - ישיבה\n• 50038 - דוח\n• 50042 - ישיבה עם גננת\n\nכל קוד = תפוקה אחת.',
   avgShnati:
-    'ממוצע הטיפולים לתשלום של 12 החודשים הקודמים.\nמשמש לחישוב פרמיית ההעדרות.\nהכנס ידנית מהתלוש החודשי.',
+    'ממוצע הטיפולים לתשלום של 12 החודשים הקודמים.\nמשמש לחישוב פרמיית ההעדרות.\nהזיני ידנית מהתלוש החודשי.',
   shalet:
     'כשמעבירים שעות עבודה לשלט:\n• המכנה קטן ← ממוצע עולה\n• סך שעות לתשלום לא משתנה\n• התקרה לא משתנה',
   mishra:
@@ -869,7 +869,7 @@ function calc() {
         ${
           same
             ? 'החודש אין הבדל בין השיטות — שני המכונים עוברים את הסף.'
-            : `הפרש: <strong>${fmtILS(Math.abs(diff))}</strong>. כללית לא עקבית בשיטה — השוו לדוח הפרמיות בתלוש ובדקו שכל הטיפולים נספרו.`
+            : `הפרש: <strong>${fmtILS(Math.abs(diff))}</strong>. כללית לא עקבית בשיטה — השווי לדוח הפרמיות בתלוש ובדקי שכל הטיפולים נספרו.`
         }
       </div>
     </div>`;
@@ -964,7 +964,7 @@ function calc() {
           }
           if (shaletNeeded !== null) {
             suggestions += `<div class="alert warning">
-              <div class="atitle">🕐 אפשרות ב׳: העבר שעות לשלט ב${escapeHtml(clinicName)}
+              <div class="atitle">🕐 אפשרות ב׳: העברת שעות לשלט ב${escapeHtml(clinicName)}
                 <button class="tip-btn" data-tip="shalet" style="font-size:9px; width:15px; height:15px; margin-right:6px;">?</button>
               </div>
               <div class="abody">העבירי <strong>${shaletNeeded.toFixed(1)} שעות</strong> משעות עבודה לשלט<br>
@@ -1131,7 +1131,7 @@ function resetFields() {
     if (btn) {
       btn.classList.add('armed');
       btn.dataset.origText = btn.dataset.origText || btn.textContent;
-      btn.textContent = 'לחץ שוב לאיפוס';
+      btn.textContent = 'לחצי שוב לאיפוס';
     }
     if (resetArmTimer) clearTimeout(resetArmTimer);
     resetArmTimer = setTimeout(() => {
@@ -2151,7 +2151,7 @@ function syncMonthAndGoToHours() {
 // (Hours tab state is preserved separately in premiot_hours.)
 function goEditHoursForShared() {
   switchTab('hours');
-  showToast('עדכני את הימים והשעות בכל מרפאה, ואז "העבר הכל" ←');
+  showToast('עדכני את הימים והשעות בכל מרפאה, ואז "העבירי הכל" ←');
 }
 
 // Per-clinic teken edit-link — jump to hours tab and scroll the matching
@@ -2169,7 +2169,7 @@ function goEditHoursForClinic(linkEl) {
       }
     }, 60);
   }
-  showToast('עדכני את הימים והשעות במרפאה הזו, ואז "העבר הכל" ←');
+  showToast('עדכני את הימים והשעות במרפאה הזו, ואז "העבירי הכל" ←');
 }
 
 // Show/hide empty-state and from-hours badges based on whether shared

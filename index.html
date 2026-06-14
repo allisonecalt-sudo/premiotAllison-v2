@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260614c" />
+    <link rel="stylesheet" href="styles.css?v=20260614d" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 י״ד</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 ט״ו</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
@@ -213,7 +213,7 @@
                   readonly
                 />
                 <button type="button" class="edit-from-hours" onclick="switchTab('hours')">
-                  ערוך
+                  ערכי
                 </button>
               </div>
               <div class="input-row">
@@ -287,11 +287,11 @@
 
           <!-- Two-machon setup must be possible from the landing tab — the
                same button as the calc tab, so a fresh user never has to hunt -->
-          <button type="button" class="add-clinic-btn" onclick="addClinic()">+ הוסף מרפאה</button>
+          <button type="button" class="add-clinic-btn" onclick="addClinic()">+ הוסיפי מרפאה</button>
 
           <div style="margin-top: 14px">
             <button onclick="applyAllHoursToCalc()" class="cta-primary">
-              העבר הכל למחשבון הפרמיה ←
+              העבירי הכל למחשבון הפרמיה ←
             </button>
           </div>
         </div>
@@ -367,7 +367,7 @@
               onclick="toggleSharedLock()"
               style="display: none"
             >
-              ערוך
+              ערכי
             </button>
           </div>
           <div class="input-row">
@@ -392,7 +392,7 @@
               oninput="calc()"
             />
             <button type="button" class="edit-from-hours" onclick="goEditHoursForShared()">
-              ערוך
+              ערכי
             </button>
           </div>
           <div class="input-row">
@@ -464,7 +464,7 @@
 
         <!-- MULTI-CLINIC CONTAINER -->
         <div id="clinicsContainer"></div>
-        <button type="button" class="add-clinic-btn" onclick="addClinic()">+ הוסף מרפאה</button>
+        <button type="button" class="add-clinic-btn" onclick="addClinic()">+ הוסיפי מרפאה</button>
         <select id="selectedMonth" onchange="saveToStorage()" style="display: none"></select>
 
         <!-- THE BIG NUMBER — this is what people came for -->
@@ -622,11 +622,11 @@
             class="action-btn"
             style="display: none"
           >
-            ↩ חזור
+            ↩ חזרי
           </button>
           <button data-reset-btn onclick="resetFields()" class="action-btn">🔄 איפוס</button>
-          <button onclick="downloadPDF()" class="action-btn">📄 שמור PDF</button>
-          <button onclick="downloadExcel()" class="action-btn">📊 שמור Excel</button>
+          <button onclick="downloadPDF()" class="action-btn">📄 שמרי PDF</button>
+          <button onclick="downloadExcel()" class="action-btn">📊 שמרי Excel</button>
         </div>
 
         <!-- Verification-gap request — the calculator is calibrated against
@@ -708,7 +708,7 @@
             onclick="event.stopPropagation()"
             style="display: none"
           >
-            מחק
+            מחקי
           </button>
         </div>
         <!-- Always-visible mini-stats: משרה% / תקרה / סך פרמיה. Visible whether
@@ -760,7 +760,7 @@
               data-edit-teken
               onclick="goEditHoursForClinic(this)"
             >
-              ערוך
+              ערכי
             </button>
           </div>
           <div class="section-title">
@@ -888,6 +888,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260614c"></script>
+    <script src="app.js?v=20260614d"></script>
   </body>
 </html>
