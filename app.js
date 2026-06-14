@@ -746,7 +746,7 @@ function calc() {
   const stickyColor = !hasData
     ? '#1a1915'
     : stickyPctVal >= 75
-      ? '#2d6a4f'
+      ? '#157a6e'
       : stickyPctVal >= 40
         ? '#b5621a'
         : '#c0392b';
@@ -851,7 +851,7 @@ function calc() {
       const rowStyle =
         'display:flex; justify-content:space-between; align-items:center; padding:6px 0;';
       const markBest = (isBest) =>
-        isBest && !same ? 'font-weight:800; color:#2d6a4f;' : 'color:var(--text);';
+        isBest && !same ? 'font-weight:800; color:#157a6e;' : 'color:var(--text);';
       compareArea.innerHTML = `
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
       <div style="font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">
@@ -1823,7 +1823,7 @@ function renderHoursClinics() {
       const hrsId = `hrs_${c.id}_d${d.idx}`;
       row.innerHTML = `
         <label style="display:flex; align-items:center; gap:8px;">
-          <input type="checkbox" id="${chkId}" data-clinic-id="${c.id}" data-day-idx="${d.idx}" data-kind="chk" style="width:18px; height:18px; accent-color:#2d6a4f;" ${saved.checked ? 'checked' : ''}>
+          <input type="checkbox" id="${chkId}" data-clinic-id="${c.id}" data-day-idx="${d.idx}" data-kind="chk" style="width:18px; height:18px; accent-color:#157a6e;" ${saved.checked ? 'checked' : ''}>
           <span style="font-size:13px; color:var(--text);">${d.name}</span>
         </label>
         <span class="unit">שעות</span>
@@ -2006,7 +2006,7 @@ function monthDayRows(workDays, monthVal) {
       line += ` | שלך: ${teken % 1 === 0 ? teken : teken.toFixed(2)} ✓`;
     }
     rows.push(
-      `<div style="${works ? 'color:#2d6a4f; font-weight:600;' : 'color:var(--muted);'}">${line}</div>`,
+      `<div style="${works ? 'color:#157a6e; font-weight:600;' : 'color:var(--muted);'}">${line}</div>`,
     );
   }
   return rows.join('');
