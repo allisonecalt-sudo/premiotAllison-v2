@@ -778,8 +778,15 @@ function calc() {
   // (2026-06-11: "i just want am i under or over this month"). Under = the
   // gap in shekels; at/over = checkmark, with the pre-cap surplus when there
   // is one (proof of margin — not paid beyond the cap).
+  // Show the verdict whenever there's real input WITH tfukot entered — not
+  // gated on premium>=0.5. A below-gate month earns ₪0 yet is genuinely UNDER
+  // the cap, and the no-tfuka page already says so; gating on hasData kept the
+  // calculator silent there and the two pages disagreed (her catch 2026-06-14).
+  // totalTipulim>0 mirrors the no-tfuka page's own "expected>0" gate so neither
+  // shows a verdict before tfukot exist.
+  const showCapVerdict = !emptyState && totalCeiling > 0 && totalTipulim > 0;
   const capStatusEl = document.getElementById('capStatus');
-  if (!hasData) {
+  if (!showCapVerdict) {
     capStatusEl.textContent = '';
     capStatusEl.className = 'cap-status';
   } else {
@@ -1452,32 +1459,54 @@ function calcNoTfuka() {
     const weighted = expected * makdam;
     const fullCeiling = v('takara');
     const potential = v('shaPotential');
+    const avgShnati = v('avgShnati');
     let maxMecane;
     let capNote;
+    let within;
     if (potential > 0 && present > 0 && tarif > 0) {
-      // Ceiling exactly as Clalit computes it: integer-rounded % × full cap
-      const mishraHours = Math.max(0, teken - loMazaka + nosafot);
-      const mishraPct = Math.round((mishraHours / potential) * 100) / 100;
-      const cap = mishraPct * fullCeiling;
-      const capRate = Math.min(1, cap / (present * tarif));
+      // Reaching-the-cap verdict comes from the SAME engine the calculator
+      // uses (calcClinic) — so the two pages can NEVER disagree on it (her
+      // catch 2026-06-14: calc said "over", this page said "not reaching",
+      // because this page ignored פרמיית העדרות, which calcClinic counts
+      // toward the cap).
+      const r = calcClinic(
+        {
+          shaTeken: String(teken),
+          shaNosfot: String(nosafot),
+          shaLaTipulit: String(shalat),
+          headrutMazaka: String(mazaka),
+          headrutLoMazaka: String(loMazaka),
+          tifukot: String(expected),
+        },
+        potential,
+        fullCeiling,
+        avgShnati,
+        tarif,
+        makdam,
+      );
+      const cap = r.takaraClinic;
+      within = cap > 0 && r.totalClinic >= cap - 0.5;
+      // Max judged-hours (= fewest tfukot / most empty hours) that still
+      // reaches the cap, crediting the absence premium the same way.
+      const effectiveCap = Math.max(0, cap - r.premiatHeadrutBefore);
+      const capRate = Math.min(1, effectiveCap / (present * tarif));
       maxMecane = weighted / (capRate + 1);
       capNote = `ועדיין מגיעים לתקרה (${fmtILS0(cap)})`;
     } else {
       // No potential synced yet — fall back to the full-rate bar (avg 2.0)
       maxMecane = weighted / 2;
+      within = mecane <= maxMecane + 0.05;
       capNote = 'ועדיין קצב פרמיה מלא (מלאי שעות פוטנציאליות לחישוב מול התקרה)';
     }
     // Her formula (2026-06-10): nothing-hours = שעות עבודה − תפוקות.
     // ~1 raw tfuka ≈ 1 treating hour, so what's left of the מכנה is hours
     // where literally nothing happened — no shalat, no reporting, nothing.
-    // The verdict line says whether that's still inside the cap allowance.
     const nothingNow = Math.max(0, mecane - expected);
-    const within = mecane <= maxMecane + 0.05;
     const slack = maxMecane - mecane;
+    const overage = mecane - maxMecane;
     // The verdict is the calc-ribbon grammar (her ask 2026-06-11: "like
     // you're not reaching ceiling or you're over"): reaching the cap =
-    // green; NOT reaching = the whole answer goes loud red — number AND a
-    // bold verdict line, not a whisper under a calm number.
+    // green; NOT reaching = the whole answer goes loud red.
     html += `<div class="total-box" style="margin-bottom:12px;${within ? '' : ' border-color:var(--danger);'}">
       <div class="tlabel">שעות ללא תפוקות <button class="tip-btn" data-tip="ntNothing">?</button></div>
       <div class="tamount"${within ? '' : ' style="color:var(--danger);"'}>${nothingNow.toFixed(1)} שעות</div>
@@ -1485,7 +1514,11 @@ function calcNoTfuka() {
         within
           ? `${capNote} ✓${slack > 0.1 ? ` — יש מקום לעוד ${slack.toFixed(1)} שעות כאלה` : ''}`
           : `<span style="color:var(--danger); font-weight:800; font-size:14px;">⚠️ לא מגיעים לתקרה</span><br>
-             <span style="color:var(--danger); font-weight:600;">עודף של ${(mecane - maxMecane).toFixed(1)} שעות — עוד תפוקות או העברה לשלט</span>`
+             <span style="color:var(--danger); font-weight:600;">${
+               overage > 0.05
+                 ? `עודף של ${overage.toFixed(1)} שעות — עוד תפוקות או העברה לשלט`
+                 : 'צריך עוד תפוקות החודש'
+             }</span>`
       }</div>
     </div>`;
   }
