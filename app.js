@@ -496,6 +496,51 @@ function toggleSharedLock() {
   saveToStorage();
 }
 
+// ---- STATE: two-machon calc method ----
+// 'separate' (default) = each machon its own average + ceiling, capped alone —
+// the per-block payslip layout. 'together' = pool every input as one machon.
+// Clalit's premia reports flip between the two methods, so the user picks
+// which one drives the headline; the compare card always shows both totals.
+const METHOD_KEY = 'premiot_calc_method_v2';
+let calcMethod = 'separate';
+try {
+  if (localStorage.getItem(METHOD_KEY) === 'together') calcMethod = 'together';
+} catch (e) {
+  /* ignore */
+}
+function setCalcMethod(m) {
+  calcMethod = m === 'together' ? 'together' : 'separate';
+  try {
+    localStorage.setItem(METHOD_KEY, calcMethod);
+  } catch (e) {
+    /* ignore */
+  }
+  calc();
+}
+
+// Sum every clinic's inputs into one synthetic machon (for the 'together'
+// method). Numbers, not strings — calcClinic parseFloats either way.
+function pooledClinicInputs() {
+  const pooled = {
+    name: 'כל המכונים יחד',
+    shaTeken: 0,
+    shaNosfot: 0,
+    shaLaTipulit: 0,
+    headrutMazaka: 0,
+    headrutLoMazaka: 0,
+    tifukot: 0,
+  };
+  clinics.forEach((c) => {
+    pooled.shaTeken += parseFloat(c.shaTeken) || 0;
+    pooled.shaNosfot += parseFloat(c.shaNosfot) || 0;
+    pooled.shaLaTipulit += parseFloat(c.shaLaTipulit) || 0;
+    pooled.headrutMazaka += parseFloat(c.headrutMazaka) || 0;
+    pooled.headrutLoMazaka += parseFloat(c.headrutLoMazaka) || 0;
+    pooled.tifukot += parseFloat(c.tifukot) || 0;
+  });
+  return pooled;
+}
+
 // ---- CORE CALC (per-clinic + combined) ----
 function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   const shaTeken = parseFloat(c.shaTeken) || 0;
@@ -612,24 +657,53 @@ function calc() {
     calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam),
   );
 
-  // Combined
-  const totalPremium = results.reduce((s, r) => s + r.totalClinic, 0);
-  const totalCeiling = results.reduce((s, r) => s + r.takaraClinic, 0);
-  const totalMishraPct = results.reduce((s, r) => s + r.mishraPct, 0);
-  const totalTipulim = results.reduce((s, r) => s + r.tipulimMushkalim, 0);
-  const totalMecane = results.reduce((s, r) => s + r.mecane, 0);
-  const totalHoursLeTashlum = results.reduce((s, r) => s + r.totalHoursLeTashlum, 0);
-  const totalAvoda = results.reduce((s, r) => s + r.premiatAvoda, 0);
-  const totalAvodaBefore = results.reduce((s, r) => s + r.premiatAvodaBefore, 0);
-  const totalHeadrut = results.reduce((s, r) => s + r.premiatHeadrut, 0);
-  const totalHeadrutBefore = results.reduce((s, r) => s + r.premiatHeadrutBefore, 0);
+  // Combined — start from the separate-method sums (each machon capped alone)
+  let totalPremium = results.reduce((s, r) => s + r.totalClinic, 0);
+  let totalCeiling = results.reduce((s, r) => s + r.takaraClinic, 0);
+  let totalMishraPct = results.reduce((s, r) => s + r.mishraPct, 0);
+  let totalTipulim = results.reduce((s, r) => s + r.tipulimMushkalim, 0);
+  let totalMecane = results.reduce((s, r) => s + r.mecane, 0);
+  let totalHoursLeTashlum = results.reduce((s, r) => s + r.totalHoursLeTashlum, 0);
+  let totalAvoda = results.reduce((s, r) => s + r.premiatAvoda, 0);
+  let totalAvodaBefore = results.reduce((s, r) => s + r.premiatAvodaBefore, 0);
+  let totalHeadrut = results.reduce((s, r) => s + r.premiatHeadrut, 0);
+  let totalHeadrutBefore = results.reduce((s, r) => s + r.premiatHeadrutBefore, 0);
 
   const combinedAvg = totalMecane > 0 ? totalTipulim / totalMecane : 0;
-  const combinedAvgClamped = Math.min(Math.max(combinedAvg - 1, 0), 1);
+  let combinedAvgClamped = Math.min(Math.max(combinedAvg - 1, 0), 1);
 
   // Anything-entered detection
   const anyClinicHasInput = results.some((r) => r.hasAnyInput);
   const emptyState = sharedPotential === 0 || !anyClinicHasInput;
+
+  // ---- Two-machon calc method (her ask 2026-07-05: Neve Yaakov + Pisgat
+  // Ze'ev — is the report two separate blocks, or everything pooled under
+  // the machon listed FIRST? She can't tell which the premia chose, so both
+  // are computed and a toggle picks which drives the whole calculator.) ----
+  const activeCount = results.filter((r) => r.hasAnyInput).length;
+  const separateTotal = totalPremium;
+  let together = null;
+  let togetherInputs = null;
+  if (activeCount >= 2 && !emptyState) {
+    togetherInputs = pooledClinicInputs();
+    // Pooled = everything under the FIRST-listed machon, per how the reports do it
+    togetherInputs.name = (clinics[0].name || 'מרפאה 1') + ' (מאוחד)';
+    together = calcClinic(togetherInputs, sharedPotential, fullCeiling, avgShnati, tarif, makdam);
+  }
+  const useTogether = calcMethod === 'together' && together !== null;
+  if (useTogether) {
+    totalPremium = together.totalClinic;
+    totalCeiling = together.takaraClinic;
+    totalMishraPct = together.mishraPct;
+    totalTipulim = together.tipulimMushkalim;
+    totalMecane = together.mecane;
+    totalHoursLeTashlum = together.totalHoursLeTashlum;
+    totalAvoda = together.premiatAvoda;
+    totalAvodaBefore = together.premiatAvodaBefore;
+    totalHeadrut = together.premiatHeadrut;
+    totalHeadrutBefore = together.premiatHeadrutBefore;
+    combinedAvgClamped = together.avgTipulim;
+  }
 
   // ---- Per-clinic UI updates ----
   results.forEach((r, idx) => {
@@ -668,6 +742,15 @@ function calc() {
     };
     if (r.hasAnyInput) {
       setMini('mishraPct', (r.mishraPct * 100).toFixed(1) + '%');
+      // ממוצע per place (her ask 2026-07-05). 2 decimals — that's the
+      // precision Clalit pays on. Amber when below the 1.0 full-rate mark
+      // only once tfukot exist (an empty tfukot field isn't a warning yet).
+      const hasTfukot = (parseFloat(c.tifukot) || 0) > 0;
+      setMini(
+        'avgTipulim',
+        hasTfukot ? r.avgTipulim.toFixed(2) : '—',
+        hasTfukot && r.avgTipulim < 1 ? 'warn' : null,
+      );
       // תקרה stays whole-shekel (always a round number, secondary stat).
       // סך פרמיה must match the clinic sum + big number to the agora — showing
       // a rounded ₪1,283 next to ₪1,282.72 on the same card eroded trust in a
@@ -677,6 +760,7 @@ function calc() {
     } else {
       // Empty clinic: show em-dashes, calm — don't draw eye to nothing.
       setMini('mishraPct', '—');
+      setMini('avgTipulim', '—');
       setMini('takaraClinic', '—');
       setMini('totalClinic', '—');
     }
@@ -717,9 +801,11 @@ function calc() {
   document.getElementById('r_takara').textContent = fmtILS(totalCeiling);
 
   // ---- Per-clinic breakdown in drill-down ----
+  // Hidden in together mode: those per-machon amounts belong to the separate
+  // method and wouldn't sum to the pooled total shown above them.
   const perEl = document.getElementById('perClinicBreakdown');
   if (perEl) {
-    if (clinics.length > 1) {
+    if (clinics.length > 1 && !useTogether) {
       perEl.innerHTML = results
         .map(
           (r, i) =>
@@ -736,6 +822,10 @@ function calc() {
 
   // ---- Sticky ----
   document.getElementById('r_total_sticky').textContent = fmtILS(totalPremium);
+  // Say WHICH method the headline is showing — a silently-switched big number
+  // would look like a bug next to the payslip.
+  const totalLabelEl = document.getElementById('r_total_label');
+  if (totalLabelEl) totalLabelEl.textContent = useTogether ? 'סך פרמיה — מאוחד' : 'סך פרמיה';
   const stickyPctVal = totalCeiling > 0 ? Math.min((totalPremium / totalCeiling) * 100, 100) : 0;
   // Status palette: warning/danger reserved for actual signals; default to
   // the single forest-green accent. When there's no cap yet OR no premium
@@ -809,8 +899,9 @@ function calc() {
   const scopeNote = document.getElementById('sharedScopeNote');
   if (scopeNote) scopeNote.style.display = clinics.length > 1 ? '' : 'none';
 
-  // chips per-clinic in sticky (only when multi)
-  updateChips(results);
+  // chips per-clinic in sticky (only when multi; not in together mode —
+  // the pooled method has no per-machon split)
+  updateChips(useTogether ? null : results);
 
   // The התקדמות-לתקרה progress block that rendered here was removed
   // 2026-06-11 (her call): it duplicated the frozen ribbon exactly — same
@@ -825,52 +916,40 @@ function calc() {
   // official report next to the calculator and see which method was used.
   const compareArea = document.getElementById('compareArea');
   if (compareArea) {
-    const activeCount = results.filter((r) => r.hasAnyInput).length;
-    if (activeCount >= 2 && !emptyState) {
-      const pooled = {
-        shaTeken: 0,
-        shaNosfot: 0,
-        shaLaTipulit: 0,
-        headrutMazaka: 0,
-        headrutLoMazaka: 0,
-        tifukot: 0,
-      };
-      clinics.forEach((c) => {
-        pooled.shaTeken += parseFloat(c.shaTeken) || 0;
-        pooled.shaNosfot += parseFloat(c.shaNosfot) || 0;
-        pooled.shaLaTipulit += parseFloat(c.shaLaTipulit) || 0;
-        pooled.headrutMazaka += parseFloat(c.headrutMazaka) || 0;
-        pooled.headrutLoMazaka += parseFloat(c.headrutLoMazaka) || 0;
-        pooled.tifukot += parseFloat(c.tifukot) || 0;
-      });
-      const together = calcClinic(pooled, sharedPotential, fullCeiling, avgShnati, tarif, makdam);
-      const separateTotal = totalPremium;
+    if (together !== null) {
       const togetherTotal = together.totalClinic;
       const diff = separateTotal - togetherTotal;
       const same = Math.abs(diff) < 0.5;
-      const rowStyle =
-        'display:flex; justify-content:space-between; align-items:center; padding:6px 0;';
-      const markBest = (isBest) =>
-        isBest && !same ? 'font-weight:800; color:#157a6e;' : 'color:var(--text);';
+      const firstName = clinics[0].name || 'מרפאה 1';
+      // Each method row is a radio: tap it and THAT method drives the whole
+      // calculator above. The worth-more row gets the ₪ bolded green.
+      const methodRow = (method, label, amount, isBest) => {
+        const active = useTogether === (method === 'together');
+        return `
+      <div onclick="setCalcMethod('${method}')" role="radio" aria-checked="${active}"
+           style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px; cursor:pointer; border-radius:8px; ${active ? 'background:rgba(21,122,110,0.08);' : ''}">
+        <span style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text);">
+          <span aria-hidden="true" style="flex:none; width:14px; height:14px; border-radius:50%; border:2px solid ${active ? '#157a6e' : 'var(--border)'}; ${active ? 'background:#157a6e; box-shadow:inset 0 0 0 2.5px var(--surface);' : ''}"></span>
+          <span>${label}${active ? ' <span style="font-size:10px; color:#157a6e; font-weight:700; white-space:nowrap;">← מוצג למעלה</span>' : ''}</span>
+        </span>
+        <span style="flex:none; font-size:15px; ${isBest && !same ? 'font-weight:800; color:#157a6e;' : 'font-weight:600; color:var(--text);'}">${fmtILS(amount)}</span>
+      </div>`;
+      };
+      const worthMore = same
+        ? 'החודש אין הבדל בין השיטות.'
+        : diff > 0
+          ? `<strong>כל מכון בנפרד שווה יותר — ב־${fmtILS(diff)}</strong>.`
+          : `<strong>המאוחד שווה יותר — ב־${fmtILS(-diff)}</strong>.`;
       compareArea.innerHTML = `
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
       <div style="font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">
-        שני מכונים — שתי שיטות חישוב
+        שני מכונים — שתי שיטות חישוב · בחרי מה להציג
       </div>
-      <div style="${rowStyle}">
-        <span style="font-size:13px;">כל מכון בנפרד</span>
-        <span style="font-size:15px; ${markBest(diff > 0)}">${fmtILS(separateTotal)}</span>
-      </div>
-      <div style="${rowStyle} border-top:1px solid var(--border);">
-        <span style="font-size:13px;">הכל מאוחד תחת מכון אחד</span>
-        <span style="font-size:15px; ${markBest(diff < 0)}">${fmtILS(togetherTotal)}</span>
-      </div>
-      <div style="margin-top:6px; font-size:11px; color:var(--muted);">
-        ${
-          same
-            ? 'החודש אין הבדל בין השיטות — שני המכונים עוברים את הסף.'
-            : `הפרש: <strong>${fmtILS(Math.abs(diff))}</strong>. כללית לא עקבית בשיטה — השווי לדוח הפרמיות בתלוש ובדקי שכל הטיפולים נספרו.`
-        }
+      ${methodRow('separate', 'כל מכון בנפרד', separateTotal, diff > 0)}
+      <div style="border-top:1px solid var(--border); margin:2px 0;"></div>
+      ${methodRow('together', `הכל מאוחד תחת ${escapeHtml(firstName)} (הראשון)`, togetherTotal, diff < 0)}
+      <div style="margin-top:8px; font-size:11px; color:var(--muted);">
+        ${worthMore} כללית לא עקבית בשיטה — השווי את שתי השורות לדוח הפרמיות בתלוש כדי לראות איזו שיטה הדוח בחר, ובדקי שכל הטיפולים נספרו.
       </div>
     </div>`;
     } else {
@@ -889,13 +968,16 @@ function calc() {
     </div>`;
     suggestArea.innerHTML = '';
   } else {
-    // pick the worst-status clinic for alert headline
-    const blocked = results.find((r) => r.hasAnyInput && r.belowThreshold);
-    const lowAvg = results.find((r) => r.hasAnyInput && r.belowAvgGate && !r.belowThreshold);
+    // pick the worst-status clinic for alert headline. In together mode the
+    // pooled machon is the only "clinic" — a weak machon pooled with a strong
+    // one can pass, which is exactly where the two methods differ.
+    const gateResults = useTogether ? [together] : results;
+    const blocked = gateResults.find((r) => r.hasAnyInput && r.belowThreshold);
+    const lowAvg = gateResults.find((r) => r.hasAnyInput && r.belowAvgGate && !r.belowThreshold);
     if (blocked) {
       alertArea.innerHTML = `<div class="alert danger">
         <div class="atitle">⚠️ סף תפוקתי לא הושג</div>
-        <div class="abody">לפחות מרפאה אחת מתחת לסף 50% של שעות נוכחות מקודדות ב-Clicks.</div>
+        <div class="abody">${useTogether ? 'במאוחד — פחות מ-50% משעות הנוכחות מקודדות ב-Clicks.' : 'לפחות מרפאה אחת מתחת לסף 50% של שעות נוכחות מקודדות ב-Clicks.'}</div>
       </div>`;
       suggestArea.innerHTML = '';
     } else if (lowAvg) {
@@ -911,10 +993,13 @@ function calc() {
       </div>`;
       suggestArea.innerHTML = '';
     } else {
-      // suggestions — pick the clinic with most room to improve (largest gap to its ceiling)
+      // suggestions — pick the clinic with most room to improve (largest gap
+      // to its ceiling). In together mode the pooled machon is the one clinic.
+      const sugResults = useTogether ? [together] : results;
+      const sugClinics = useTogether ? [togetherInputs] : clinics;
       let bestClinicIdx = -1;
       let bestGap = 0;
-      results.forEach((r, i) => {
+      sugResults.forEach((r, i) => {
         if (!r.hasAnyInput) return;
         const gap = r.takaraClinic - r.totalClinic;
         if (gap > bestGap) {
@@ -924,8 +1009,8 @@ function calc() {
       });
       let suggestions = '';
       if (bestClinicIdx >= 0) {
-        const r = results[bestClinicIdx];
-        const c = clinics[bestClinicIdx];
+        const r = sugResults[bestClinicIdx];
+        const c = sugClinics[bestClinicIdx];
         const clinicName = c.name || 'מרפאה ' + (bestClinicIdx + 1);
         const tifukot = parseFloat(c.tifukot) || 0;
         if (r.avgTipulim < 1) {
@@ -1193,16 +1278,41 @@ function getSummaryData() {
   const results = clinics.map((c) =>
     calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam),
   );
+  // Mirror the calculator's method choice so an exported PDF/Excel says the
+  // same numbers the screen does (and names the method it used).
+  const activeCount = results.filter((r) => r.hasAnyInput).length;
+  let together = null;
+  if (activeCount >= 2) {
+    together = calcClinic(
+      pooledClinicInputs(),
+      sharedPotential,
+      fullCeiling,
+      avgShnati,
+      tarif,
+      makdam,
+    );
+  }
+  const useTogether = calcMethod === 'together' && together !== null;
+  const sepTotals = {
+    totalPremium: results.reduce((s, r) => s + r.totalClinic, 0),
+    totalAvoda: results.reduce((s, r) => s + r.premiatAvoda, 0),
+    totalHeadrut: results.reduce((s, r) => s + r.premiatHeadrut, 0),
+    totalCeiling: results.reduce((s, r) => s + r.takaraClinic, 0),
+  };
   return {
     month: selectedMonth,
     isVetek,
     sharedPotential,
     avgShnati,
     clinics: clinics.map((c, i) => ({ ...c, ...results[i] })),
-    totalPremium: results.reduce((s, r) => s + r.totalClinic, 0),
-    totalAvoda: results.reduce((s, r) => s + r.premiatAvoda, 0),
-    totalHeadrut: results.reduce((s, r) => s + r.premiatHeadrut, 0),
-    totalCeiling: results.reduce((s, r) => s + r.takaraClinic, 0),
+    method: useTogether ? 'together' : 'separate',
+    hasTwoMethods: together !== null,
+    otherMethodPremium:
+      together !== null ? (useTogether ? sepTotals.totalPremium : together.totalClinic) : null,
+    totalPremium: useTogether ? together.totalClinic : sepTotals.totalPremium,
+    totalAvoda: useTogether ? together.premiatAvoda : sepTotals.totalAvoda,
+    totalHeadrut: useTogether ? together.premiatHeadrut : sepTotals.totalHeadrut,
+    totalCeiling: useTogether ? together.takaraClinic : sepTotals.totalCeiling,
   };
 }
 
@@ -1221,6 +1331,7 @@ function downloadPDF() {
       <tr><td>תפוקות</td><td>${c.tifukot || 0}</td></tr>
       <tr class="accent"><td>שעות עבודה (מחושב)</td><td>${c.shaAvoda.toFixed(2)}</td></tr>
       <tr><td>אחוז משרה במרפאה</td><td>${(c.mishraPct * 100).toFixed(1)}%</td></tr>
+      <tr><td>ממוצע לתשלום</td><td>${c.avgTipulim.toFixed(2)}</td></tr>
       <tr><td>תקרה במרפאה</td><td>${fmtILS(c.takaraClinic)}</td></tr>
       <tr><td>פרמיית עבודה</td><td>${fmtILS(c.premiatAvoda)}</td></tr>
       <tr><td>פרמיית העדרות</td><td>${fmtILS(c.premiatHeadrut)}</td></tr>
@@ -1260,6 +1371,12 @@ function downloadPDF() {
 ${clinicSections}
 <table>
   <tr><th colspan="2">סיכום כולל</th></tr>
+  ${
+    d.hasTwoMethods
+      ? `<tr><td>שיטת חישוב</td><td>${d.method === 'together' ? 'מאוחד תחת מכון אחד' : 'כל מכון בנפרד'}</td></tr>
+  <tr><td>לפי השיטה השנייה (${d.method === 'together' ? 'כל מכון בנפרד' : 'מאוחד'})</td><td>${fmtILS(d.otherMethodPremium)}</td></tr>`
+      : ''
+  }
   <tr><td>תקרה כוללת</td><td>${fmtILS(d.totalCeiling)}</td></tr>
   <tr><td>פרמיית עבודה — סמל 1783</td><td>${fmtILS(d.totalAvoda)}</td></tr>
   <tr><td>פרמיית העדרות — סמל 1785</td><td>${fmtILS(d.totalHeadrut)}</td></tr>
@@ -1299,6 +1416,7 @@ function downloadExcel() {
     rows.push(['תפוקות', c.tifukot || 0]);
     rows.push(['שעות עבודה (מחושב)', c.shaAvoda.toFixed(2)]);
     rows.push(['אחוז משרה במרפאה', (c.mishraPct * 100).toFixed(1) + '%']);
+    rows.push(['ממוצע לתשלום', c.avgTipulim.toFixed(2)]);
     rows.push(['תקרה במרפאה', c.takaraClinic.toFixed(2)]);
     rows.push(['פרמיית עבודה', c.premiatAvoda.toFixed(2)]);
     rows.push(['פרמיית העדרות', c.premiatHeadrut.toFixed(2)]);
@@ -1306,6 +1424,13 @@ function downloadExcel() {
     rows.push(['', '']);
   });
   rows.push(['סיכום כולל', '']);
+  if (d.hasTwoMethods) {
+    rows.push(['שיטת חישוב', d.method === 'together' ? 'מאוחד תחת מכון אחד' : 'כל מכון בנפרד']);
+    rows.push([
+      'לפי השיטה השנייה (' + (d.method === 'together' ? 'כל מכון בנפרד' : 'מאוחד') + ')',
+      d.otherMethodPremium.toFixed(2),
+    ]);
+  }
   rows.push(['תקרה כוללת', d.totalCeiling.toFixed(2)]);
   rows.push(['פרמיית עבודה (סמל 1783)', d.totalAvoda.toFixed(2)]);
   rows.push(['פרמיית העדרות (סמל 1785)', d.totalHeadrut.toFixed(2)]);

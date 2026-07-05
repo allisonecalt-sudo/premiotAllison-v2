@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.6 כ׳ · 5.7.2026 14:02</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.7 · 5.7.2026 14:30</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
@@ -308,7 +308,7 @@
           <div id="stickyMonthBig" class="sticky-month"></div>
           <div style="display: flex; align-items: center; gap: 12px; justify-content: center">
             <div class="total-block" style="text-align: center">
-              <div class="label">סך פרמיה</div>
+              <div class="label" id="r_total_label">סך פרמיה</div>
               <div id="r_total_sticky" class="value">₪0.00</div>
             </div>
             <div style="flex: 1; max-width: 200px">
@@ -714,13 +714,18 @@
             מחקי
           </button>
         </div>
-        <!-- Always-visible mini-stats: משרה% / תקרה / סך פרמיה. Visible whether
-             card is collapsed or expanded — Allison should never have to expand
-             a clinic to see its three key numbers. -->
+        <!-- Always-visible mini-stats: משרה% / ממוצע / תקרה / סך פרמיה. Visible
+             whether card is collapsed or expanded — Allison should never have to
+             expand a clinic to see its key numbers. ממוצע added 2026-07-05
+             (her ask: "I also need ממוצע for each place"). -->
         <div class="clinic-header-stats" data-clinic-header-stats>
           <div class="mini-stat">
             <div class="ms-label">משרה</div>
             <div class="ms-value" data-mini="mishraPct">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-label">ממוצע</div>
+            <div class="ms-value" data-mini="avgTipulim">—</div>
           </div>
           <div class="mini-stat">
             <div class="ms-label">תקרה</div>
