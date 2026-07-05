@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260705-1538" />
+    <link rel="stylesheet" href="styles.css?v=20260705-1548" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.7 א׳ · 5.7.2026 15:38</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.7 ב׳ · 5.7.2026 15:48</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
@@ -340,6 +340,11 @@
           <div id="capStatus" class="cap-status"></div>
         </div>
 
+        <!-- Two-methods card (separate vs pooled) — PINNED TO TOP, first thing
+             under the ribbon (her ask 2026-07-05: "this is pinned to top").
+             Only rendered when 2 clinics have input. -->
+        <div id="compareArea" style="margin-top: 10px"></div>
+
         <!-- Month FIRST — which month is this premia for? (Allison 2026-06-10:
              "it needs to say what month we are calculating on top") -->
         <div onclick="syncMonthAndGoToHours()" class="month-jump" style="margin-top: 10px">
@@ -506,11 +511,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Together-vs-separate comparison — only rendered when 2+ clinics
-             have input. Clalit is inconsistent about which method it uses,
-             so both are shown for checking against the premia report. -->
-        <div id="compareArea" style="margin-top: 10px"></div>
 
         <!-- Suggestions -->
         <div id="suggestArea" style="margin-top: 10px"></div>
@@ -896,6 +896,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260705-1538"></script>
+    <script src="app.js?v=20260705-1548"></script>
   </body>
 </html>

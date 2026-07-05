@@ -947,11 +947,11 @@ function calc() {
       compareArea.innerHTML = `
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
       <div style="font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">
-        שני מכונים — שתי שיטות חישוב · בחרי מה להציג
+        2 מרפאות — שתי שיטות חישוב · בחרי מה להציג
       </div>
-      ${methodRow('separate', 'כל מכון בנפרד', separateTotal, diff > 0)}
+      ${methodRow('separate', 'כל מרפאה בנפרד', separateTotal, diff > 0)}
       <div style="border-top:1px solid var(--border); margin:2px 0;"></div>
-      ${methodRow('together', `הכל מאוחד תחת ${escapeHtml(firstName)} (הראשון)`, togetherTotal, diff < 0)}
+      ${methodRow('together', `2 המרפאות יחד תחת ${escapeHtml(firstName)}`, togetherTotal, diff < 0)}
       <div style="margin-top:8px; font-size:11px; color:var(--muted);">
         ${worthMore} כללית לא עקבית בשיטה — השווי את שתי השורות לדוח הפרמיות בתלוש כדי לראות איזו שיטה הדוח בחר, ובדקי שכל הטיפולים נספרו.
       </div>
