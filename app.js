@@ -2179,7 +2179,10 @@ function updateHoursFirstUI() {
   const emptyEl = document.getElementById('hoursEmptyState');
   const sharedBadge = document.getElementById('shaPotentialBadge');
   const clinicsContainer = document.getElementById('clinicsContainer');
-  const addBtn = document.querySelector('.add-clinic-btn');
+  // Scope to the calc tab's button — an unscoped query grabs the FIRST
+  // .add-clinic-btn in the DOM, which is the hours tab's, hiding two-machon
+  // setup from the landing tab for every fresh user (empty-state = display:none).
+  const addBtn = document.querySelector('#panel-calc .add-clinic-btn');
 
   const sharedEditLink = document.querySelector('.shared-strip .edit-from-hours');
   if (sharedPot <= 0) {
