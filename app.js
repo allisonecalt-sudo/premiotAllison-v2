@@ -669,9 +669,7 @@ function calc() {
   let totalMecane = results.reduce((s, r) => s + r.mecane, 0);
   let totalHoursLeTashlum = results.reduce((s, r) => s + r.totalHoursLeTashlum, 0);
   let totalAvoda = results.reduce((s, r) => s + r.premiatAvoda, 0);
-  let totalAvodaBefore = results.reduce((s, r) => s + r.premiatAvodaBefore, 0);
   let totalHeadrut = results.reduce((s, r) => s + r.premiatHeadrut, 0);
-  let totalHeadrutBefore = results.reduce((s, r) => s + r.premiatHeadrutBefore, 0);
 
   const combinedAvg = totalMecane > 0 ? totalTipulim / totalMecane : 0;
   let combinedAvgClamped = Math.min(Math.max(combinedAvg - 1, 0), 1);
@@ -703,9 +701,7 @@ function calc() {
     totalMecane = together.mecane;
     totalHoursLeTashlum = together.totalHoursLeTashlum;
     totalAvoda = together.premiatAvoda;
-    totalAvodaBefore = together.premiatAvodaBefore;
     totalHeadrut = together.premiatHeadrut;
-    totalHeadrutBefore = together.premiatHeadrutBefore;
     combinedAvgClamped = together.avgTipulim;
   }
 
@@ -785,13 +781,9 @@ function calc() {
   document.getElementById('r_avoda').textContent = fmtILS(totalAvoda);
   document.getElementById('r_headrut').textContent = fmtILS(totalHeadrut);
 
-  const avodaCapped = Math.abs(totalAvodaBefore - totalAvoda) > 0.005;
-  document.getElementById('row_avoda_before').style.display = avodaCapped ? '' : 'none';
-  if (avodaCapped) document.getElementById('r_avoda_before').textContent = fmtILS(totalAvodaBefore);
-  const headrutCapped = Math.abs(totalHeadrutBefore - totalHeadrut) > 0.005;
-  document.getElementById('row_headrut_before').style.display = headrutCapped ? '' : 'none';
-  if (headrutCapped)
-    document.getElementById('r_headrut_before').textContent = fmtILS(totalHeadrutBefore);
+  // The "↑ לפני תקרה" pre-cap rows that rendered here were removed
+  // 2026-07-13 (her call: "you cannot go over the ceiling, i dont care
+  // about over ceiling") — the payable, capped amounts are the only truth.
 
   set('r_tipulim', totalTipulim.toFixed(0), 'טיפולים');
   set('r_mecane', totalMecane.toFixed(2), 'שעות');
@@ -870,8 +862,10 @@ function calc() {
 
   // Under-or-over THIS month's cap — the one verdict she wants on the ribbon
   // (2026-06-11: "i just want am i under or over this month"). Under = the
-  // gap in shekels; at/over = checkmark, with the pre-cap surplus when there
-  // is one (proof of margin — not paid beyond the cap).
+  // gap in shekels; at/over = checkmark only. The pre-cap surplus ("מעבר
+  // ב־X", her 2026-06-11 ask) was REMOVED 2026-07-13 — her call: "you cannot
+  // go over the ceiling, i dont care about over ceiling". The cap is a hard
+  // payout limit; a shekel figure above it is not money and reads like one.
   // Show the verdict whenever there's real input WITH tfukot entered — not
   // gated on premium>=0.5. A below-gate month earns ₪0 yet is genuinely UNDER
   // the cap, and the no-tfuka page already says so; gating on hasData kept the
@@ -884,19 +878,13 @@ function calc() {
     capStatusEl.textContent = '';
     capStatusEl.className = 'cap-status';
   } else {
-    const preCap = totalAvodaBefore + totalHeadrutBefore;
     const gap = totalCeiling - totalPremium;
     if (gap > 0.5) {
       capStatusEl.className = 'cap-status under';
       capStatusEl.textContent = `מתחת לתקרה — חסר ${fmtILS(gap)}`;
-    } else if (preCap - totalCeiling > 0.5) {
-      // the over-amount is the answer, not a parenthetical (her ask:
-      // "if its over write by how much so a person knows")
-      capStatusEl.className = 'cap-status over';
-      capStatusEl.textContent = `על התקרה ✓ — מעבר ב־${fmtILS(preCap - totalCeiling)}`;
     } else {
       capStatusEl.className = 'cap-status over';
-      capStatusEl.textContent = 'על התקרה ✓ — בדיוק';
+      capStatusEl.textContent = 'על התקרה ✓';
     }
   }
   // "(משותף לכל המרפאות)" is only information once a second clinic exists
@@ -1584,6 +1572,9 @@ function calcNoTfuka() {
   // needs to be high enough to reach the cap, not the full 2.0. Her March:
   // 140 weighted, cap 3132, pay-hours 98.15 → needed avg 1.79 → מכנה can be
   // ~78; she treated ~70 → ~8 hours of pure nothing ("77−69").
+  // Engine result for this page's inputs — set by the verdict block below,
+  // reused by the premium box so both cap against the same ceiling.
+  let clinicR = null;
   if (expected > 0) {
     const weighted = expected * makdam;
     const fullCeiling = v('takara');
@@ -1613,6 +1604,7 @@ function calcNoTfuka() {
         tarif,
         makdam,
       );
+      clinicR = r;
       const cap = r.takaraClinic;
       within = cap > 0 && r.totalClinic >= cap - 0.5;
       // Max judged-hours (= fewest tfukot / most empty hours) that still
@@ -1681,10 +1673,23 @@ function calcNoTfuka() {
     if (weighted > mecane) {
       // Same 2-decimal rounding Clalit applies in calcClinic
       const avg = Math.round(Math.min(weighted / mecane - 1, 1) * 100) / 100;
-      const premia = present * avg * tarif;
+      // Show the PAYABLE premium, capped at the personal ceiling. The raw
+      // pre-cap figure that used to show here ("לפני תקרה אישית") was
+      // removed 2026-07-13 — her call: "you cannot go over the ceiling, i
+      // dont care about over ceiling". Cap comes from clinicR (the same
+      // engine call the verdict above uses), so the pages can't disagree.
+      const rawPremia = present * avg * tarif;
+      const premia = clinicR ? Math.min(rawPremia, clinicR.takaraClinic) : rawPremia;
+      const cappedAtCeiling = clinicR !== null && rawPremia > clinicR.takaraClinic + 0.005;
       html += `<div class="alert success" style="margin-top:10px;">
         <div class="atitle">✓ עם השלט שהזנת (${shalat.toFixed(1)}) יש פרמיה</div>
-        <div class="abody">פרמיית עבודה משוערת: <strong>${fmtILS(premia)}</strong> (לפני תקרה אישית)</div>
+        <div class="abody">פרמיית עבודה משוערת: <strong>${fmtILS(premia)}</strong>${
+          cappedAtCeiling
+            ? ' — התקרה האישית (המקסימום לתשלום)'
+            : clinicR === null
+              ? ' (לפני תקרה אישית — מלאי שעות פוטנציאליות לחישובה)'
+              : ''
+        }</div>
       </div>`;
     } else {
       // Earn nothing unless judged hours drop below weighted treatments —

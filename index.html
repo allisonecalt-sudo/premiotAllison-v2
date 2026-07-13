@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260705-1548" />
+    <link rel="stylesheet" href="styles.css?v=20260713-1130" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.7 ב׳ · 5.7.2026 15:48</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.8 · 13.7.2026 11:30</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
@@ -527,32 +527,12 @@
               <span class="rlabel">פרמיית עבודה — סמל 1783</span>
               <span class="rvalue kpi lg" id="r_avoda">—</span>
             </div>
-            <div
-              class="result-row"
-              id="row_avoda_before"
-              style="display: none; border: none; background: none"
-            >
-              <span class="rlabel" style="font-size: 11px; color: var(--muted)">↑ לפני תקרה</span>
-              <span class="rvalue" id="r_avoda_before" style="font-size: 12px; color: var(--muted)"
-                >—</span
-              >
-            </div>
+            <!-- The "↑ לפני תקרה" pre-cap rows were removed 2026-07-13 (her
+                 call: "you cannot go over the ceiling") — only payable,
+                 capped amounts are shown anywhere in the app. -->
             <div class="result-row accent" style="border: none; background: none">
               <span class="rlabel">פרמיית העדרות — סמל 1785</span>
               <span class="rvalue kpi lg" id="r_headrut">—</span>
-            </div>
-            <div
-              class="result-row"
-              id="row_headrut_before"
-              style="display: none; border: none; background: none"
-            >
-              <span class="rlabel" style="font-size: 11px; color: var(--muted)">↑ לפני תקרה</span>
-              <span
-                class="rvalue"
-                id="r_headrut_before"
-                style="font-size: 12px; color: var(--muted)"
-                >—</span
-              >
             </div>
           </div>
         </div>
@@ -896,6 +876,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260705-1548"></script>
+    <script src="app.js?v=20260713-1130"></script>
   </body>
 </html>
