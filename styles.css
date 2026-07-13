@@ -46,15 +46,11 @@ body {
 }
 
 /* tabular nums on every numeric display so digits line up */
-.num,
 .input-row input,
 .result-row .rvalue,
 .total-box .tamount,
 #r_total_sticky,
-#r_avg_sticky,
-#shaAvoda_display,
-#hr_potential,
-#hr_teken {
+#r_avg_sticky {
   font-variant-numeric: tabular-nums;
 }
 
@@ -78,11 +74,6 @@ body {
   color: var(--text);
   letter-spacing: -0.01em;
 }
-.header p {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 13px;
-}
 .header .note {
   display: inline-block;
   margin-top: 10px;
@@ -99,17 +90,6 @@ body {
   max-width: 720px;
   margin: 0 auto;
   padding: 20px 14px;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-@media (max-width: 600px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .sticky-result {
@@ -447,10 +427,6 @@ select option {
   font-size: 11px;
   color: var(--muted);
   margin-top: 8px;
-}
-
-.divider {
-  height: 8px;
 }
 
 /* ===== Multi-clinic structure ===== */
@@ -972,8 +948,6 @@ select option {
 }
 .sticky-result .progress-meta span {
   white-space: nowrap;
-}
-.sticky-result .progress-meta span {
   font-size: 10px;
   color: var(--muted);
 }
@@ -1129,13 +1103,6 @@ select option {
 }
 .clinic-hours-header .ch-icon {
   font-size: 14px;
-}
-.clinic-hours-header .ch-name {
-  flex: 1;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0;
 }
 /* Editable clinic name on the hours tab — same quiet-until-touched treatment
    as the calc-tab name input */

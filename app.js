@@ -38,7 +38,6 @@ function set(id, val, unit) {
 const TIPS = {
   ntNothing:
     'שעות עבודה שלא נרשמה בהן תפוקה — ביטולים, חורים ביומן (שעות עבודה פחות תפוקות).\nכל עוד הממוצע מספיק כדי להגיע לתקרה — הפרמיה נשארת מקסימלית.\nהמספר מתעדכן אוטומטית כשמשנים שלט, היעדרויות או תפוקות.',
-  tarif: 'תעריף הסכם קבוע: 40.49 ₪ לשעה לטיפול. לא ניתן לשינוי.',
   // 2026-07-05 fix: the old formula here ADDED היעדרות מזכה to the numerator —
   // contradicting both the code (calcClinic: teken − loMazaka + nosafot) and
   // the mishra tip below. מזכה is already inside the תקן and doesn't reduce
@@ -54,7 +53,6 @@ const TIPS = {
     'היעדרויות המזכות בפרמיית העדרות:\n• חופש שנתי\n• יום בחירה\n• יום זיכרון – עובד שכול\n• השתלמות מתחת ל־3 ימים',
   headrutLoMazaka:
     'היעדרויות שאינן מזכות בפרמיית העדרות:\n• מחלת עובד / מחלת ילד / הצהרה\n• מחלת בן משפחה\n• הריון / טיפולי פריה / תאונת עבודה\n• נישואים / יום לידה בן/בת / ברית מילה\n• ימי אבל / שביתה / מילואים\n• השתלמות מעל 3 ימים\n• ביקור אצל רופא תעסוקתי',
-  shaAvoda: 'שעות עבודה = שעות תקן − היעדרות מזכה − היעדרות לא מזכה − שלט + שעות עודפות',
   // Wording rule (Allison 2026-06-11): define שלט without the phrase
   // "שעות לא טיפוליות" — she banned it app-wide because it reads like the
   // hours-without-tfuka concept and confuses the two.
@@ -251,22 +249,25 @@ function updateUndoBtn() {
   btn.style.display = undoStack.length > 0 ? '' : 'none';
 }
 
+// Hebrew month names — single source (was copy-pasted in 4 places until the
+// 2026-07-13 cleanup).
+const MONTH_NAMES_HE = [
+  'ינואר',
+  'פברואר',
+  'מרץ',
+  'אפריל',
+  'מאי',
+  'יוני',
+  'יולי',
+  'אוגוסט',
+  'ספטמבר',
+  'אוקטובר',
+  'נובמבר',
+  'דצמבר',
+];
+
 // ---- MONTH SELECTOR (for the small display + persistence) ----
 (function () {
-  const monthNames = [
-    'ינואר',
-    'פברואר',
-    'מרץ',
-    'אפריל',
-    'מאי',
-    'יוני',
-    'יולי',
-    'אוגוסט',
-    'ספטמבר',
-    'אוקטובר',
-    'נובמבר',
-    'דצמבר',
-  ];
   const sel = document.getElementById('selectedMonth');
   const now = new Date();
   const curMonth = now.getMonth();
@@ -275,8 +276,8 @@ function updateUndoBtn() {
     const m = (curMonth + offset + 12) % 12;
     const y = curYear + Math.floor((curMonth + offset) / 12);
     const opt = document.createElement('option');
-    opt.value = monthNames[m] + ' ' + y;
-    opt.textContent = monthNames[m] + ' ' + y;
+    opt.value = MONTH_NAMES_HE[m] + ' ' + y;
+    opt.textContent = MONTH_NAMES_HE[m] + ' ' + y;
     if (offset === 0) opt.selected = true;
     sel.appendChild(opt);
   }
@@ -483,13 +484,7 @@ function addClinic() {
 
 // ---- SHARED STRIP LOCK ----
 function maybeLockShared() {
-  const sharedHasValue =
-    document.getElementById('shaPotential').value !== '' ||
-    document.getElementById('avgShnati').value !== '';
   const editBtn = document.getElementById('sharedEditBtn');
-  if (sharedHasValue && !sharedLocked) {
-    // not auto-locking visually until any clinic has data — keep simple
-  }
   if (editBtn) editBtn.style.display = sharedLocked ? '' : 'none';
   const strip = document.getElementById('sharedStrip');
   if (strip) strip.classList.toggle('locked', sharedLocked);
@@ -1174,20 +1169,6 @@ function showToast(msg) {
 // May... is it clear it's May"). When the saved month is behind the calendar,
 // say so on both tabs instead of letting old data pose as current.
 function checkStaleMonth() {
-  const names = [
-    'ינואר',
-    'פברואר',
-    'מרץ',
-    'אפריל',
-    'מאי',
-    'יוני',
-    'יולי',
-    'אוגוסט',
-    'ספטמבר',
-    'אוקטובר',
-    'נובמבר',
-    'דצמבר',
-  ];
   const now = new Date();
   const cur = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
   const saved = hoursState.month;
@@ -1195,7 +1176,7 @@ function checkStaleMonth() {
   let label = '';
   if (stale) {
     const [y, m] = saved.split('-').map(Number);
-    label = `⚠️ הנתונים כאן מ־${names[m - 1] || ''} ${y} — לחודש חדש: 🔄 איפוס, ואז מלאי שעות מחדש`;
+    label = `⚠️ הנתונים כאן מ־${MONTH_NAMES_HE[m - 1] || ''} ${y} — לחודש חדש: 🔄 איפוס, ואז מלאי שעות מחדש`;
   }
   ['staleMonthHintHours', 'staleMonthHintCalc'].forEach((id) => {
     const el = document.getElementById(id);
@@ -1823,31 +1804,15 @@ const HOLIDAYS = {
   '2027-12-31': { type: 'mekutzar', name: 'חנוכה' },
 };
 
-const DAY_NAMES_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
-
 // Build hours month selector (Jan 2026 - Dec 2027)
 (function () {
-  const monthNames = [
-    'ינואר',
-    'פברואר',
-    'מרץ',
-    'אפריל',
-    'מאי',
-    'יוני',
-    'יולי',
-    'אוגוסט',
-    'ספטמבר',
-    'אוקטובר',
-    'נובמבר',
-    'דצמבר',
-  ];
   const sel = document.getElementById('hoursMonth');
   const now = new Date();
   for (let y = 2026; y <= 2027; y++) {
     for (let m = 0; m < 12; m++) {
       const opt = document.createElement('option');
       opt.value = y + '-' + String(m + 1).padStart(2, '0');
-      opt.textContent = monthNames[m] + ' ' + y;
+      opt.textContent = MONTH_NAMES_HE[m] + ' ' + y;
       if (y === now.getFullYear() && m === now.getMonth()) opt.selected = true;
       sel.appendChild(opt);
     }
@@ -2025,7 +1990,7 @@ function onHoursInput(e) {
 }
 
 // Compute potential + teken for a given (clinic, month). Returns
-// { potential, teken, groups }. Potential is identical across clinics for
+// { potential, teken }. Potential is identical across clinics for
 // the same month (calendar baseline) but we display it per-section so the
 // user sees the math both ways.
 function computeHoursForClinic(clinicId, monthVal) {
@@ -2042,13 +2007,6 @@ function computeHoursForClinic(clinicId, monthVal) {
 
   let potential = 0;
   let teken = 0;
-  const groups = {
-    regular: { count: 0, hours: 0 },
-    erev: { count: 0, hours: 0 },
-    cholhamoed: { count: 0, hours: 0 },
-    chag: 0,
-    mekutzar: { count: 0, hours: 0 },
-  };
 
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month - 1, d);
@@ -2059,55 +2017,31 @@ function computeHoursForClinic(clinicId, monthVal) {
 
     let potentialDay = 8;
     let tekenMultiplier = 1;
-    let dayType = 'regular';
 
     if (holiday) {
       if (holiday.type === 'chag' || holiday.type === 'yomAtzmaut') {
         potentialDay = 0;
         tekenMultiplier = 0;
-        dayType = 'chag';
       } else if (holiday.type === 'erev') {
         potentialDay = 4;
         tekenMultiplier = 0.5;
-        dayType = 'erev';
       } else if (holiday.type === 'cholhamoed') {
         potentialDay = 5;
         tekenMultiplier = 0.625;
-        dayType = 'cholhamoed';
       } else if (holiday.type === 'mekutzar') {
         potentialDay = 8;
         tekenMultiplier = 1;
-        dayType = 'mekutzar';
       }
     }
 
     if (dow !== 5) potential += potentialDay;
 
     if (dow in workDays) {
-      const regularHours = workDays[dow];
-      const tekenHours = regularHours * tekenMultiplier;
-      teken += tekenHours;
-      if (dow !== 5) {
-        if (dayType === 'regular') {
-          groups.regular.count += 1;
-          groups.regular.hours += tekenHours;
-        } else if (dayType === 'erev') {
-          groups.erev.count += 1;
-          groups.erev.hours += tekenHours;
-        } else if (dayType === 'cholhamoed') {
-          groups.cholhamoed.count += 1;
-          groups.cholhamoed.hours += tekenHours;
-        } else if (dayType === 'chag') {
-          groups.chag += 1;
-        } else if (dayType === 'mekutzar') {
-          groups.mekutzar.count += 1;
-          groups.mekutzar.hours += tekenHours;
-        }
-      }
+      teken += workDays[dow] * tekenMultiplier;
     }
   }
 
-  return { potential, teken, groups };
+  return { potential, teken };
 }
 
 // Day-by-day month rows — ONE renderer for both the hours-tab פירוט ימים and
@@ -2225,21 +2159,7 @@ function applyAllHoursToCalc() {
 
   // Sync month label onto calc tab
   const [y, m] = monthVal.split('-').map(Number);
-  const monthNames = [
-    'ינואר',
-    'פברואר',
-    'מרץ',
-    'אפריל',
-    'מאי',
-    'יוני',
-    'יולי',
-    'אוגוסט',
-    'ספטמבר',
-    'אוקטובר',
-    'נובמבר',
-    'דצמבר',
-  ];
-  const label = monthNames[m - 1] + ' ' + y;
+  const label = MONTH_NAMES_HE[m - 1] + ' ' + y;
   const sel = document.getElementById('selectedMonth');
   let found = false;
   for (let i = 0; i < sel.options.length; i++) {
@@ -2278,12 +2198,6 @@ function applyAllHoursToCalc() {
   } else {
     showToast('מלאי שעות לפחות במרפאה אחת');
   }
-}
-
-// Back-compat: older code paths still call applyHoursToCalc() — route to the
-// new multi-clinic apply.
-function applyHoursToCalc() {
-  applyAllHoursToCalc();
 }
 
 function syncMonthAndGoToHours() {
