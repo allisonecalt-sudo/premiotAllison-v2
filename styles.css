@@ -709,7 +709,9 @@ select option {
   color: var(--success);
 }
 .cap-status.under {
-  color: var(--warning);
+  /* Red, not amber — her call 2026-07-13: "when they're over it's green
+     and when they're under it's red". */
+  color: var(--danger);
 }
 
 /* ===== Button system — added in calm-pass 2026-05-24 =====

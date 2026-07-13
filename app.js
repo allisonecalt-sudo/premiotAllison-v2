@@ -669,7 +669,9 @@ function calc() {
   let totalMecane = results.reduce((s, r) => s + r.mecane, 0);
   let totalHoursLeTashlum = results.reduce((s, r) => s + r.totalHoursLeTashlum, 0);
   let totalAvoda = results.reduce((s, r) => s + r.premiatAvoda, 0);
+  let totalAvodaBefore = results.reduce((s, r) => s + r.premiatAvodaBefore, 0);
   let totalHeadrut = results.reduce((s, r) => s + r.premiatHeadrut, 0);
+  let totalHeadrutBefore = results.reduce((s, r) => s + r.premiatHeadrutBefore, 0);
 
   const combinedAvg = totalMecane > 0 ? totalTipulim / totalMecane : 0;
   let combinedAvgClamped = Math.min(Math.max(combinedAvg - 1, 0), 1);
@@ -701,7 +703,9 @@ function calc() {
     totalMecane = together.mecane;
     totalHoursLeTashlum = together.totalHoursLeTashlum;
     totalAvoda = together.premiatAvoda;
+    totalAvodaBefore = together.premiatAvodaBefore;
     totalHeadrut = together.premiatHeadrut;
+    totalHeadrutBefore = together.premiatHeadrutBefore;
     combinedAvgClamped = together.avgTipulim;
   }
 
@@ -782,8 +786,9 @@ function calc() {
   document.getElementById('r_headrut').textContent = fmtILS(totalHeadrut);
 
   // The "↑ לפני תקרה" pre-cap rows that rendered here were removed
-  // 2026-07-13 (her call: "you cannot go over the ceiling, i dont care
-  // about over ceiling") — the payable, capped amounts are the only truth.
+  // 2026-07-13 (her call: "no point to see above caps") — premium amounts
+  // are always the payable, capped ones. The ribbon's over/under delta is
+  // the one deliberate exception (her 12:06 call: it signals do-less/do-more).
 
   set('r_tipulim', totalTipulim.toFixed(0), 'טיפולים');
   set('r_mecane', totalMecane.toFixed(2), 'שעות');
@@ -861,11 +866,12 @@ function calc() {
   monthBigEl.style.display = stickyMonthName ? '' : 'none';
 
   // Under-or-over THIS month's cap — the one verdict she wants on the ribbon
-  // (2026-06-11: "i just want am i under or over this month"). Under = the
-  // gap in shekels; at/over = checkmark only. The pre-cap surplus ("מעבר
-  // ב־X", her 2026-06-11 ask) was REMOVED 2026-07-13 — her call: "you cannot
-  // go over the ceiling, i dont care about over ceiling". The cap is a hard
-  // payout limit; a shekel figure above it is not money and reads like one.
+  // (2026-06-11: "i just want am i under or over this month"). Her final rule
+  // 2026-07-13 12:06: the DELTA stays in both directions — it's the
+  // do-less/do-more-hours signal ("they can know how much over the cap they
+  // are or how much under") — over = green, under = red, no explanation
+  // text. Payable PREMIUM amounts elsewhere stay capped (11:30 same day:
+  // "no point to see above caps"); the delta here is a signal, not money.
   // Show the verdict whenever there's real input WITH tfukot entered — not
   // gated on premium>=0.5. A below-gate month earns ₪0 yet is genuinely UNDER
   // the cap, and the no-tfuka page already says so; gating on hasData kept the
@@ -878,10 +884,14 @@ function calc() {
     capStatusEl.textContent = '';
     capStatusEl.className = 'cap-status';
   } else {
+    const preCap = totalAvodaBefore + totalHeadrutBefore;
     const gap = totalCeiling - totalPremium;
     if (gap > 0.5) {
       capStatusEl.className = 'cap-status under';
       capStatusEl.textContent = `מתחת לתקרה — חסר ${fmtILS(gap)}`;
+    } else if (preCap - totalCeiling > 0.5) {
+      capStatusEl.className = 'cap-status over';
+      capStatusEl.textContent = `על התקרה ✓ — מעבר ב־${fmtILS(preCap - totalCeiling)}`;
     } else {
       capStatusEl.className = 'cap-status over';
       capStatusEl.textContent = 'על התקרה ✓';
