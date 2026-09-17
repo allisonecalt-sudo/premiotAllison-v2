@@ -530,7 +530,10 @@ select option {
    on top, three labeled bold numbers. */
 .clinic-header-stats {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  /* FOUR mini-stats: משרה% / ממוצע / תקרה / סך פרמיה. ממוצע was added 2026-07-05
+     and this stayed at three, so סך פרמיה — the number that matters — wrapped alone
+     onto a second row and תקרה kept a divider pointing at nothing. */
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   padding: 8px 14px 10px;
   background: var(--surface-2);

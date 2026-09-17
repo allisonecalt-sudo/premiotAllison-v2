@@ -266,20 +266,36 @@ const MONTH_NAMES_HE = [
   'דצמבר',
 ];
 
+// The calendar span the app covers. BOTH month selectors are built from this —
+// #hoursMonth (value "YYYY-MM") and #selectedMonth (value "חודש YYYY"). They must
+// stay in lockstep: if a month exists in one and not the other, a saved month can
+// fail to match on load and the ribbon silently shows the wrong one.
+// NOTE (known, unfixed): HOLIDAYS only covers these two years, so extending this
+// range without extending HOLIDAYS would compute months with no holiday data.
+const HOURS_YEAR_FROM = 2026;
+const HOURS_YEAR_TO = 2027;
+
 // ---- MONTH SELECTOR (for the small display + persistence) ----
+// Range MUST match #hoursMonth (2026-2027). It used to be today ±2 months, which
+// silently corrupted the ribbon: loadFromStorage only restores a saved month if an
+// option matches it, so data older than two months failed to match, the select fell
+// back to today, and stickyMonthBig printed TODAY'S month over OLD data — while the
+// stale-data banner underneath named the real month. Two contradictory months on one
+// money screen, and the wrong one then got written back to storage.
+// Reproduced 2026-09-16: March data on a September load showed "ספטמבר 2026" over
+// ₪2,052 with the banner saying מרץ. Her ask for a month on the ribbon (2026-06-11)
+// existed precisely so this could not happen.
 (function () {
   const sel = document.getElementById('selectedMonth');
   const now = new Date();
-  const curMonth = now.getMonth();
-  const curYear = now.getFullYear();
-  for (let offset = -2; offset <= 2; offset++) {
-    const m = (curMonth + offset + 12) % 12;
-    const y = curYear + Math.floor((curMonth + offset) / 12);
-    const opt = document.createElement('option');
-    opt.value = MONTH_NAMES_HE[m] + ' ' + y;
-    opt.textContent = MONTH_NAMES_HE[m] + ' ' + y;
-    if (offset === 0) opt.selected = true;
-    sel.appendChild(opt);
+  for (let y = HOURS_YEAR_FROM; y <= HOURS_YEAR_TO; y++) {
+    for (let m = 0; m < 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = MONTH_NAMES_HE[m] + ' ' + y;
+      opt.textContent = opt.value;
+      if (y === now.getFullYear() && m === now.getMonth()) opt.selected = true;
+      sel.appendChild(opt);
+    }
   }
 })();
 
@@ -560,7 +576,13 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   // Clalit rounds the payment average to 2 decimals before multiplying —
   // verified against Moran's Dec25–Mar26 premia PDFs (matches to ±0.08₪;
   // full precision is off by ₪2–14).
-  const avgTipulim = Math.round(Math.min(Math.max(rawAvg - 1, 0), 1) * 100) / 100;
+  // toFixed(6) first: Math.round on a raw float rounds DOWN whenever the binary
+  // representation of a mathematical .5 lands a hair below it (e.g. 0.435 arrives as
+  // 0.43499999999999994). That made the boundary case a coin-flip decided by float
+  // error rather than by a rule. OPEN QUESTION for the next payslip that lands on a
+  // .5 boundary: whether Clalit rounds half UP or truncates. This makes the behaviour
+  // deterministic (half up); if it turns out to be truncation, change it here, once.
+  const avgTipulim = Math.round(+(Math.min(Math.max(rawAvg - 1, 0), 1) * 100).toFixed(6)) / 100;
   const totalHoursLeTashlum = Math.max(0, shaTeken - headrutMazaka - headrutLoMazaka + shaNosfot);
 
   // Per-clinic mishra% = (work + overtime + qualifying absence) / shared potential
@@ -568,7 +590,10 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   const mishraPct = sharedPotential > 0 ? mishraHours / sharedPotential : 0;
   // Clalit rounds the % to a whole number for the ceiling — every block in
   // the 6 verified premia PDFs is an exact integer-% × 5400.
-  const takaraClinic = (Math.round(mishraPct * 100) / 100) * fullCeiling;
+  // Same epsilon guard as avgTipulim above — תקן 69.60 of 160 potential is
+  // mathematically 43.5% but arrives as 43.49999999999999, which rounded to 43%
+  // and cost ₪54 of ceiling. 38 reachable cases across realistic תקן/potential pairs.
+  const takaraClinic = (Math.round(+(mishraPct * 100).toFixed(6)) / 100) * fullCeiling;
 
   // Coded-pct threshold (per clinic)
   const actualHoursPresent = shaAvoda + shaLaTipulit;
@@ -584,10 +609,14 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   const premiatHeadrut = Math.min(premiatHeadrutBefore, remainingCap);
 
   const totalClinic = premiatAvoda + premiatHeadrut;
-  const atCap =
-    premiatAvoda > 0 &&
-    Math.abs(premiatAvodaBefore - takaraClinic) < 0.5 &&
-    premiatAvoda >= takaraClinic - 0.5;
+  // At the cap = the payable amount reached the ceiling. The old test ALSO demanded
+  // the PRE-cap amount land within half a shekel of the ceiling, which is only true
+  // for someone who happens to land exactly on it — so a worker comfortably OVER the
+  // cap failed it and her card showed "✓ עבר" instead of "🔒 על תקרה". Allison has
+  // been capped every month since July 2025, so her own card never showed the badge.
+  // (Her June-2026 slip: pre-cap ₪2,808.06 against a ₪2,754 ceiling.) The ribbon
+  // verdict and the 🎉 alert always used the correct test; this was the odd one out.
+  const atCap = premiatAvoda > 0 && premiatAvoda >= takaraClinic - 0.5;
 
   // Pill: cap > warn > ok > neutral
   let pill = 'neutral';
@@ -1031,11 +1060,19 @@ function calc() {
           }
         }
         const shaLaTipulit = parseFloat(c.shaLaTipulit) || 0;
-        const availableShalet = Math.max(0, r.shaAvoda);
+        // The 50% gate (see calcClinic: belowThreshold) zeroes the ENTIRE premium once
+        // coded hours fall under half the hours present. Moving work hours to שלט walks
+        // straight toward it: shaAvoda shrinks while hours-present stays put. This used
+        // to search up to r.shaAvoda and could therefore advise a move that pays ₪0 —
+        // verified 2026-09-16: with תקן 100 / שלט 20 / 42 תפוקות it said "move 32.0,
+        // maximum 80.0", and 32 took ₪202.45 to ₪0.00. The real limit is 30.
+        //   (shaAvoda − x) / (shaAvoda + shaLaTipulit) >= 0.5
+        //   → x <= shaAvoda − 0.5 × (shaAvoda + shaLaTipulit)
+        const availableShalet = Math.max(0, r.shaAvoda - 0.5 * (r.shaAvoda + shaLaTipulit));
         if (availableShalet > 0.1 && r.avgTipulim < 1) {
           const targetPremium = Math.max(0, r.takaraClinic - r.premiatHeadrutBefore);
           let shaletNeeded = null;
-          for (let x = 0.5; x <= availableShalet + 0.5; x += 0.5) {
+          for (let x = 0.5; x <= availableShalet; x += 0.5) {
             const newMecane = Math.max(r.mecane - x, 0.01);
             const newAvg = Math.min(Math.max(r.tipulimMushkalim / newMecane - 1, 0), 1);
             const newPremium = r.totalHoursLeTashlum * newAvg * tarif;
@@ -1050,7 +1087,7 @@ function calc() {
                 <button class="tip-btn" data-tip="shalet" style="font-size:9px; width:15px; height:15px; margin-right:6px;">?</button>
               </div>
               <div class="abody">העבירי <strong>${shaletNeeded.toFixed(1)} שעות</strong> משעות עבודה לשלט<br>
-              <span style="font-size:11px; opacity:0.8;">שלט: ${shaLaTipulit} → ${(shaLaTipulit + shaletNeeded).toFixed(1)} | מקסימום: ${r.shaAvoda.toFixed(1)}</span></div>
+              <span style="font-size:11px; opacity:0.8;">שלט: ${shaLaTipulit} → ${(shaLaTipulit + shaletNeeded).toFixed(1)} | מקסימום: ${availableShalet.toFixed(1)}</span></div>
             </div>`;
           }
         }
@@ -1806,11 +1843,11 @@ const HOLIDAYS = {
   '2027-12-31': { type: 'mekutzar', name: 'חנוכה' },
 };
 
-// Build hours month selector (Jan 2026 - Dec 2027)
+// Build hours month selector (same span as #selectedMonth — see HOURS_YEAR_FROM)
 (function () {
   const sel = document.getElementById('hoursMonth');
   const now = new Date();
-  for (let y = 2026; y <= 2027; y++) {
+  for (let y = HOURS_YEAR_FROM; y <= HOURS_YEAR_TO; y++) {
     for (let m = 0; m < 12; m++) {
       const opt = document.createElement('option');
       opt.value = y + '-' + String(m + 1).padStart(2, '0');
