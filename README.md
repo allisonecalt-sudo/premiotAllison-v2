@@ -4,14 +4,22 @@
 
 ## What this is
 
-A working fork of [premiotAllison (v1)](https://github.com/allisonecalt-sudo/premiotAllison) used as the staging ground for the next-generation premiot calculator. v1 stays live and unchanged for the OTs who depend on it; v2 is where the upgrade happens.
+THE premiot calculator — the one app every OT uses. Started as a fork of
+[premiotAllison (v1)](https://github.com/allisonecalt-sudo/premiotAllison).
 
-- **v1 live:** https://allisonecalt-sudo.github.io/premiotAllison/
-- **v2 live:** https://allisonecalt-sudo.github.io/premiotAllison-v2/
+- **Live:** https://allisonecalt-sudo.github.io/premiotAllison-v2/
+- **v1 archived 2026-10-19:** its address (https://allisonecalt-sudo.github.io/premiotAllison/)
+  now forwards here, so the OTs' old links keep working. v1 users' saved data
+  carries over on first load (same site; `loadFromStorage` / `loadHoursState`
+  migrate `premiot_data` + `premiot_hours`) — keep that migration code. The old
+  v1 app is at tag `v1-final` in the v1 repo.
 
 ## What's decided
 
-- Separate repo, separate deploy. Zero risk to v1.
+- One app. Every change goes here; v1 is archived (Allison's call, 2026-10-19).
+- Holiday calendar runs through 2030 (`HOLIDAYS` in app.js, checked against
+  hebcal in Israel mode). A month past it shows a red line. To extend: add the
+  next year's dates, then raise `HOLIDAY_YEAR_TO`. Election days go in by hand.
 - Calculator logic, HTML, CSS forked as-is from v1 — v2 starts in a working state.
 - TypeScript strict scaffold added. New code is TS; existing `app.js` migrates incrementally as features touch it.
 
