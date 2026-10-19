@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20260917-0757" />
+    <link rel="stylesheet" href="styles.css?v=20261019-1100" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.13 · 17.9.2026 07:57</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.14 · 19.10.2026 11:00</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
@@ -281,6 +281,20 @@
             class="alert warning"
             style="display: none; margin: 0 0 12px; font-size: 12px; padding: 8px 12px"
           ></div>
+          <!-- Fail loud: the picked month is past the holiday calendar, so every
+               day would count as a full workday. Shown by calcHours(). -->
+          <div
+            id="holidayMissingHours"
+            class="alert danger"
+            style="
+              display: none;
+              margin: 0 0 12px;
+              font-size: 13px;
+              font-weight: 600;
+              padding: 8px 12px;
+              color: var(--danger);
+            "
+          ></div>
 
           <!-- Per-clinic day-grid sections, rendered by renderHoursClinics() -->
           <div id="clinicHoursContainer"></div>
@@ -365,15 +379,6 @@
             <!-- The parenthetical only means something once a second clinic
                  exists — with one clinic it's noise; JS shows it at 2+. -->
             <span>👤 פרטי עובדת <span id="sharedScopeNote">(משותף לכל המרפאות)</span></span>
-            <button
-              type="button"
-              class="strip-edit"
-              id="sharedEditBtn"
-              onclick="toggleSharedLock()"
-              style="display: none"
-            >
-              ערכי
-            </button>
           </div>
           <div class="input-row">
             <label>
@@ -877,6 +882,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260917-0757"></script>
+    <script src="app.js?v=20261019-1100"></script>
   </body>
 </html>

@@ -174,7 +174,6 @@ document.addEventListener(
 /** @type {Array<{id:string,name:string,shaTeken:string,shaNosfot:string,shaLaTipulit:string,headrutMazaka:string,headrutLoMazaka:string,tifukot:string,expanded:boolean}>} */
 let clinics = [];
 let lastEditedClinicId = null;
-let sharedLocked = false;
 
 function newClinicObj(name) {
   return {
@@ -266,17 +265,24 @@ const MONTH_NAMES_HE = [
   'דצמבר',
 ];
 
-// The calendar span the app covers. BOTH month selectors are built from this —
-// #hoursMonth (value "YYYY-MM") and #selectedMonth (value "חודש YYYY"). They must
-// stay in lockstep: if a month exists in one and not the other, a saved month can
-// fail to match on load and the ribbon silently shows the wrong one.
-// NOTE (known, unfixed): HOLIDAYS only covers these two years, so extending this
-// range without extending HOLIDAYS would compute months with no holiday data.
-const HOURS_YEAR_FROM = 2026;
-const HOURS_YEAR_TO = 2027;
+// The years HOLIDAYS fully covers (checked against hebcal, Israel mode,
+// 2026-10-19). To extend: add the next year's dates to HOLIDAYS, then raise
+// HOLIDAY_YEAR_TO.
+const HOLIDAY_YEAR_FROM = 2026;
+const HOLIDAY_YEAR_TO = 2030;
+
+// The calendar span the month pickers offer. BOTH month selectors are built from
+// this — #hoursMonth (value "YYYY-MM") and #selectedMonth (value "חודש YYYY"). They
+// must stay in lockstep: if a month exists in one and not the other, a saved month
+// can fail to match on load and the ribbon silently shows the wrong one.
+// It runs to the current year even past HOLIDAY_YEAR_TO, so a user in a later year
+// can still pick the month — and gets the red "holidays missing" line
+// (monthHasHolidayData) instead of the picker silently falling back to Jan 2026.
+const HOURS_YEAR_FROM = HOLIDAY_YEAR_FROM;
+const HOURS_YEAR_TO = Math.max(HOLIDAY_YEAR_TO, new Date().getFullYear());
 
 // ---- MONTH SELECTOR (for the small display + persistence) ----
-// Range MUST match #hoursMonth (2026-2027). It used to be today ±2 months, which
+// Range MUST match #hoursMonth (HOURS_YEAR_FROM-TO). It used to be today ±2 months, which
 // silently corrupted the ribbon: loadFromStorage only restores a saved month if an
 // option matches it, so data older than two months failed to match, the select fell
 // back to today, and stickyMonthBig printed TODAY'S month over OLD data — while the
@@ -325,7 +331,6 @@ function saveToStorage() {
       avgShnati: document.getElementById('avgShnati').value,
       selectedMonth: document.getElementById('selectedMonth').value,
       clinics: clinics,
-      sharedLocked: sharedLocked,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
@@ -355,7 +360,8 @@ function loadFromStorage() {
       if (Array.isArray(data.clinics) && data.clinics.length > 0) {
         clinics = data.clinics.map((c) => ({ ...newClinicObj(), ...c }));
       }
-      if (data.sharedLocked) sharedLocked = true;
+      // Old saves may still carry `sharedLocked` (the shared-strip lock, removed
+      // 2026-10-19 — nothing could ever show its button). It is simply ignored.
       return;
     }
     // Migration from legacy single-clinic key
@@ -496,19 +502,6 @@ function addClinic() {
   // New clinic gets its own Hours-tab section automatically
   renderHoursClinics();
   calc();
-}
-
-// ---- SHARED STRIP LOCK ----
-function maybeLockShared() {
-  const editBtn = document.getElementById('sharedEditBtn');
-  if (editBtn) editBtn.style.display = sharedLocked ? '' : 'none';
-  const strip = document.getElementById('sharedStrip');
-  if (strip) strip.classList.toggle('locked', sharedLocked);
-}
-function toggleSharedLock() {
-  sharedLocked = !sharedLocked;
-  maybeLockShared();
-  saveToStorage();
 }
 
 // ---- STATE: two-machon calc method ----
@@ -1768,7 +1761,41 @@ function switchTab(tab) {
   }
 }
 
-// ---- HEBREW HOLIDAY CALENDAR 2026-2027 ----
+// ---- HOLIDAY RULES — the ONE place a holiday day's hours are defined ----
+// Both the hours math (computeHoursForClinic) and the day-by-day list
+// (monthDayRows) read these. potential = hours the day adds to שעות
+// פוטנציאליות; mult = share of the worker's own hours for that weekday that
+// count toward תקן; label = what the day list prints after the holiday name.
+const HOLIDAY_RULES = {
+  chag: { potential: 0, mult: 0, label: '0 שעות' },
+  yomAtzmaut: { potential: 0, mult: 0, label: '0 שעות' },
+  erev: { potential: 4, mult: 0.5, label: '4 שעות (50%)' },
+  cholhamoed: { potential: 5, mult: 0.625, label: '5 שעות (62.5%)' },
+  mekutzar: { potential: 8, mult: 1, label: 'יום מקוצר = מלא' },
+};
+
+// How one calendar date counts: { potential, mult, note }. A date that isn't
+// in HOLIDAYS is a regular 8-hour day.
+function dayRule(dateStr) {
+  const holiday = HOLIDAYS[dateStr];
+  const rule = holiday && HOLIDAY_RULES[holiday.type];
+  if (!rule) return { potential: 8, mult: 1, note: 'יום רגיל — 8 שעות' };
+  return { potential: rule.potential, mult: rule.mult, note: holiday.name + ' — ' + rule.label };
+}
+
+// Fail loud: a month outside HOLIDAY_YEAR_FROM-TO has no holiday data, so every
+// day in it would quietly count as a full workday.
+function monthHasHolidayData(monthVal) {
+  const year = Number(monthVal.slice(0, 4));
+  return year >= HOLIDAY_YEAR_FROM && year <= HOLIDAY_YEAR_TO;
+}
+
+// ---- HEBREW HOLIDAY CALENDAR 2026-2030 (Israel) ----
+// Day types and names follow the 2026 choices: Yom HaZikaron = erev, Purim and
+// Hanukkah = mekutzar (full day), Hanukkah days = the 8 days after the first
+// candle. 2028-2030 were generated from hebcal (Israel mode) with the same
+// mapping, which reproduces 2026-2027 exactly. Election days are NOT
+// predictable — add each one by hand when it is announced (like 2026-10-27).
 const HOLIDAYS = {
   '2026-03-03': { type: 'mekutzar', name: 'פורים' },
   '2026-04-01': { type: 'erev', name: 'ערב פסח' },
@@ -1841,6 +1868,112 @@ const HOLIDAYS = {
   '2027-12-29': { type: 'mekutzar', name: 'חנוכה' },
   '2027-12-30': { type: 'mekutzar', name: 'חנוכה' },
   '2027-12-31': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-01-01': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-03-12': { type: 'mekutzar', name: 'פורים' },
+  '2028-04-10': { type: 'erev', name: 'ערב פסח' },
+  '2028-04-11': { type: 'chag', name: 'פסח א׳' },
+  '2028-04-12': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2028-04-13': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2028-04-14': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2028-04-15': { type: 'cholhamoed', name: 'חול המועד פסח (שבת)' },
+  '2028-04-16': { type: 'cholhamoed', name: 'חול המועד פסח (ערב שביעי של פסח)' },
+  '2028-04-17': { type: 'chag', name: 'שביעי של פסח' },
+  '2028-05-01': { type: 'erev', name: 'יום הזיכרון' },
+  '2028-05-02': { type: 'yomAtzmaut', name: 'יום העצמאות' },
+  '2028-05-30': { type: 'erev', name: 'ערב שבועות' },
+  '2028-05-31': { type: 'chag', name: 'שבועות' },
+  '2028-09-20': { type: 'erev', name: 'ערב ראש השנה' },
+  '2028-09-21': { type: 'chag', name: 'ראש השנה א׳' },
+  '2028-09-22': { type: 'chag', name: 'ראש השנה ב׳' },
+  '2028-09-29': { type: 'erev', name: 'ערב יום כיפור' },
+  '2028-09-30': { type: 'chag', name: 'יום כיפור' },
+  '2028-10-04': { type: 'erev', name: 'ערב סוכות' },
+  '2028-10-05': { type: 'chag', name: 'סוכות א׳' },
+  '2028-10-06': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2028-10-07': { type: 'cholhamoed', name: 'חול המועד סוכות (שבת)' },
+  '2028-10-08': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2028-10-09': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2028-10-10': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2028-10-11': { type: 'cholhamoed', name: 'הושענא רבה (חול המועד סוכות)' },
+  '2028-10-12': { type: 'chag', name: 'שמיני עצרת / שמחת תורה' },
+  '2028-12-13': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-12-14': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-12-15': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-12-16': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-12-17': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-12-18': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-12-19': { type: 'mekutzar', name: 'חנוכה' },
+  '2028-12-20': { type: 'mekutzar', name: 'חנוכה' },
+  '2029-03-01': { type: 'mekutzar', name: 'פורים' },
+  '2029-03-30': { type: 'erev', name: 'ערב פסח' },
+  '2029-03-31': { type: 'chag', name: 'פסח א׳' },
+  '2029-04-01': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2029-04-02': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2029-04-03': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2029-04-04': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2029-04-05': { type: 'cholhamoed', name: 'חול המועד פסח (ערב שביעי של פסח)' },
+  '2029-04-06': { type: 'chag', name: 'שביעי של פסח' },
+  '2029-04-18': { type: 'erev', name: 'יום הזיכרון' },
+  '2029-04-19': { type: 'yomAtzmaut', name: 'יום העצמאות' },
+  '2029-05-19': { type: 'erev', name: 'ערב שבועות' },
+  '2029-05-20': { type: 'chag', name: 'שבועות' },
+  '2029-09-09': { type: 'erev', name: 'ערב ראש השנה' },
+  '2029-09-10': { type: 'chag', name: 'ראש השנה א׳' },
+  '2029-09-11': { type: 'chag', name: 'ראש השנה ב׳' },
+  '2029-09-18': { type: 'erev', name: 'ערב יום כיפור' },
+  '2029-09-19': { type: 'chag', name: 'יום כיפור' },
+  '2029-09-23': { type: 'erev', name: 'ערב סוכות' },
+  '2029-09-24': { type: 'chag', name: 'סוכות א׳' },
+  '2029-09-25': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2029-09-26': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2029-09-27': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2029-09-28': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2029-09-29': { type: 'cholhamoed', name: 'חול המועד סוכות (שבת)' },
+  '2029-09-30': { type: 'cholhamoed', name: 'הושענא רבה (חול המועד סוכות)' },
+  '2029-10-01': { type: 'chag', name: 'שמיני עצרת / שמחת תורה' },
+  '2029-12-02': { type: 'mekutzar', name: 'חנוכה' },
+  '2029-12-03': { type: 'mekutzar', name: 'חנוכה' },
+  '2029-12-04': { type: 'mekutzar', name: 'חנוכה' },
+  '2029-12-05': { type: 'mekutzar', name: 'חנוכה' },
+  '2029-12-06': { type: 'mekutzar', name: 'חנוכה' },
+  '2029-12-07': { type: 'mekutzar', name: 'חנוכה' },
+  '2029-12-08': { type: 'mekutzar', name: 'חנוכה' },
+  '2029-12-09': { type: 'mekutzar', name: 'חנוכה' },
+  '2030-03-19': { type: 'mekutzar', name: 'פורים' },
+  '2030-04-17': { type: 'erev', name: 'ערב פסח' },
+  '2030-04-18': { type: 'chag', name: 'פסח א׳' },
+  '2030-04-19': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2030-04-20': { type: 'cholhamoed', name: 'חול המועד פסח (שבת)' },
+  '2030-04-21': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2030-04-22': { type: 'cholhamoed', name: 'חול המועד פסח' },
+  '2030-04-23': { type: 'cholhamoed', name: 'חול המועד פסח (ערב שביעי של פסח)' },
+  '2030-04-24': { type: 'chag', name: 'שביעי של פסח' },
+  '2030-05-07': { type: 'erev', name: 'יום הזיכרון' },
+  '2030-05-08': { type: 'yomAtzmaut', name: 'יום העצמאות' },
+  '2030-06-06': { type: 'erev', name: 'ערב שבועות' },
+  '2030-06-07': { type: 'chag', name: 'שבועות' },
+  '2030-09-27': { type: 'erev', name: 'ערב ראש השנה' },
+  '2030-09-28': { type: 'chag', name: 'ראש השנה א׳' },
+  '2030-09-29': { type: 'chag', name: 'ראש השנה ב׳' },
+  '2030-10-06': { type: 'erev', name: 'ערב יום כיפור' },
+  '2030-10-07': { type: 'chag', name: 'יום כיפור' },
+  '2030-10-11': { type: 'erev', name: 'ערב סוכות' },
+  '2030-10-12': { type: 'chag', name: 'סוכות א׳' },
+  '2030-10-13': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2030-10-14': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2030-10-15': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2030-10-16': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2030-10-17': { type: 'cholhamoed', name: 'חול המועד סוכות' },
+  '2030-10-18': { type: 'cholhamoed', name: 'הושענא רבה (חול המועד סוכות)' },
+  '2030-10-19': { type: 'chag', name: 'שמיני עצרת / שמחת תורה' },
+  '2030-12-21': { type: 'mekutzar', name: 'חנוכה' },
+  '2030-12-22': { type: 'mekutzar', name: 'חנוכה' },
+  '2030-12-23': { type: 'mekutzar', name: 'חנוכה' },
+  '2030-12-24': { type: 'mekutzar', name: 'חנוכה' },
+  '2030-12-25': { type: 'mekutzar', name: 'חנוכה' },
+  '2030-12-26': { type: 'mekutzar', name: 'חנוכה' },
+  '2030-12-27': { type: 'mekutzar', name: 'חנוכה' },
+  '2030-12-28': { type: 'mekutzar', name: 'חנוכה' },
 };
 
 // Build hours month selector (same span as #selectedMonth — see HOURS_YEAR_FROM)
@@ -2050,33 +2183,14 @@ function computeHoursForClinic(clinicId, monthVal) {
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month - 1, d);
     const dow = date.getDay();
-    const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-    const holiday = HOLIDAYS[dateStr];
     if (dow === 6) continue;
+    const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const rule = dayRule(dateStr);
 
-    let potentialDay = 8;
-    let tekenMultiplier = 1;
-
-    if (holiday) {
-      if (holiday.type === 'chag' || holiday.type === 'yomAtzmaut') {
-        potentialDay = 0;
-        tekenMultiplier = 0;
-      } else if (holiday.type === 'erev') {
-        potentialDay = 4;
-        tekenMultiplier = 0.5;
-      } else if (holiday.type === 'cholhamoed') {
-        potentialDay = 5;
-        tekenMultiplier = 0.625;
-      } else if (holiday.type === 'mekutzar') {
-        potentialDay = 8;
-        tekenMultiplier = 1;
-      }
-    }
-
-    if (dow !== 5) potential += potentialDay;
+    if (dow !== 5) potential += rule.potential;
 
     if (dow in workDays) {
-      teken += workDays[dow] * tekenMultiplier;
+      teken += workDays[dow] * rule.mult;
     }
   }
 
@@ -2098,28 +2212,13 @@ function monthDayRows(workDays, monthVal) {
     const dow = date.getDay();
     if (dow === 6) continue; // Shabbat — never counted
     const dateStr = monthVal + '-' + String(d).padStart(2, '0');
-    const holiday = HOLIDAYS[dateStr];
-    let mult = 1;
-    let note = 'יום רגיל — 8 שעות';
-    if (holiday) {
-      if (holiday.type === 'chag' || holiday.type === 'yomAtzmaut') {
-        mult = 0;
-        note = holiday.name + ' — 0 שעות';
-      } else if (holiday.type === 'erev') {
-        mult = 0.5;
-        note = holiday.name + ' — 4 שעות (50%)';
-      } else if (holiday.type === 'cholhamoed') {
-        mult = 0.625;
-        note = holiday.name + ' — 5 שעות (62.5%)';
-      } else if (holiday.type === 'mekutzar') {
-        note = holiday.name + ' — יום מקוצר = מלא';
-      }
-    }
+    const rule = dayRule(dateStr);
+    let note = rule.note;
     if (dow === 5) note += ' (שישי — לתקן בלבד)';
     const works = dow in workDays;
     let line = `${dayNames[dow]} ${d}/${month} — ${note}`;
     if (works) {
-      const teken = workDays[dow] * mult;
+      const teken = workDays[dow] * rule.mult;
       line += ` | שלך: ${teken % 1 === 0 ? teken : teken.toFixed(2)} ✓`;
     }
     rows.push(
@@ -2145,6 +2244,15 @@ function calcHours() {
   if (!monthVal) return;
   hoursState.month = monthVal;
   saveHoursState();
+
+  const missingEl = document.getElementById('holidayMissingHours');
+  if (missingEl) {
+    const missing = !monthHasHolidayData(monthVal);
+    missingEl.style.display = missing ? '' : 'none';
+    missingEl.textContent = missing
+      ? `⚠️ חסרים נתוני חגים לחודש הזה (הלוח מכסה עד ${HOLIDAY_YEAR_TO}) — כל יום נספר כיום עבודה מלא`
+      : '';
+  }
 
   document.querySelectorAll('[data-hours-card]').forEach((card) => {
     const cid = card.getAttribute('data-hours-clinic-id');
@@ -2334,7 +2442,6 @@ if (hoursState.month) {
   }
 }
 renderHoursClinics();
-maybeLockShared();
 calc();
 
 // Fresh user with no data → land on Hours tab so they get the natural
