@@ -895,6 +895,10 @@ function calc() {
   const monthBigEl = document.getElementById('stickyMonthBig');
   monthBigEl.textContent = stickyMonthName || '';
   monthBigEl.style.display = stickyMonthName ? '' : 'none';
+  // The "מחשבים את" line reads the same select, so the two can't disagree
+  // (a fresh page said "נובמבר 2026" on the ribbon and "לא נבחר חודש" below).
+  const monthLineEl = document.getElementById('selectedMonthDisplay');
+  if (monthLineEl) monthLineEl.textContent = stickyMonthName || 'לא נבחר חודש';
 
   // Under-or-over THIS month's cap — the one verdict she wants on the ribbon
   // (2026-06-11: "i just want am i under or over this month"). Her final rule
@@ -964,16 +968,16 @@ function calc() {
         </button>`;
       };
       const note = same
-        ? 'החודש אין הבדל בין השיטות.'
+        ? 'החודש אין הבדל'
         : diff > 0
-          ? `נפרד שווה יותר ב־${fmtILS0(diff)}.`
-          : `מאוחד שווה יותר ב־${fmtILS0(-diff)}.`;
+          ? `נפרד שווה יותר ב־${fmtILS0(diff)}`
+          : `מאוחד שווה יותר ב־${fmtILS0(-diff)}`;
       switchEl.innerHTML = `
         <div class="method-switch" role="group" aria-label="שיטת חישוב לשתי מרפאות">
           ${btn('separate', 'נפרד', separateTotal, diff > 0)}
           ${btn('together', 'מאוחד', togetherTotal, diff < 0)}
         </div>
-        <div class="ms-note">${note} כללית מחליפה שיטה מחודש לחודש — השווי לדוח הפרמיות.</div>`;
+        <div class="ms-note">${note} · השווי לדוח הפרמיות</div>`;
     } else if (clinics.length >= 2) {
       // Say the switch exists before both clinics are filled (2026-11-01:
       // it used to stay invisible until then).
@@ -2397,6 +2401,13 @@ function updateHoursFirstUI() {
   const addBtn = document.querySelector('#panel-calc .add-clinic-btn');
 
   const sharedEditLink = document.querySelector('.shared-strip .edit-from-hours');
+  // Before the hours tab is filled, the "fill hours first" card is the one
+  // message — the big ₪0.00 box and the "fill fields" alert repeated it
+  // (three empty-state messages on one screen, 2026-11-02).
+  const totalBox = document.querySelector('#panel-calc .total-box');
+  const alertAreaEl = document.getElementById('alertArea');
+  if (totalBox) totalBox.style.display = sharedPot <= 0 ? 'none' : '';
+  if (alertAreaEl) alertAreaEl.style.display = sharedPot <= 0 ? 'none' : '';
   if (sharedPot <= 0) {
     if (emptyEl) emptyEl.style.display = '';
     if (clinicsContainer) clinicsContainer.style.display = 'none';
