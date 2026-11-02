@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.16 · 02.11.2026 08:10</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.17 · 02.11.2026 13:40</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
@@ -335,7 +335,11 @@
     <!-- TAB: Premium Calculator -->
     <div id="panel-calc">
       <div class="container">
-        <!-- STICKY RESULT — always visible while scrolling -->
+        <!-- STICKY RESULT — always visible while scrolling. Shrinks to a slim
+             strip once it sticks (her "the banner is a little large" 2026-11-02:
+             it took 29% of a phone screen with two clinics). The sentinel tells
+             app.js when the ribbon has reached the top. -->
+        <div id="ribbonSentinel" aria-hidden="true"></div>
         <div class="sticky-result">
           <!-- The month, big, first — her ask 2026-06-11: "in big at top it
                says what month it is" -->
@@ -345,7 +349,7 @@
               <div class="label" id="r_total_label">סך פרמיה</div>
               <div id="r_total_sticky" class="value">₪0.00</div>
             </div>
-            <div style="flex: 1; max-width: 200px">
+            <div class="ribbon-progress" style="flex: 1; max-width: 200px">
               <div id="stickyProgress" class="progress-track">
                 <div id="stickyProgressBar" class="progress-fill" style="width: 0%"></div>
               </div>
@@ -377,6 +381,9 @@
                diff ("i dont care abt previous month at all"). -->
           <div id="capStatus" class="cap-status"></div>
         </div>
+        <!-- "Check the report" hint for two machons — moved off the frozen
+             ribbon 2026-11-02 so the ribbon stays slim. -->
+        <div id="methodHint" class="method-hint"></div>
 
         <!-- Month FIRST — which month is this premia for? (Allison 2026-06-10:
              "it needs to say what month we are calculating on top") -->
@@ -668,8 +675,10 @@
             class="clinic-name-input"
             data-hours-name
             data-kind="name"
-            placeholder="מרפאה"
+            placeholder="שם המרפאה (למשל נווה יעקב)"
+            title="לחצי כדי לשנות את שם המרפאה"
           />
+          <span class="name-edit" data-name-edit aria-hidden="true">✏️</span>
           <span class="ch-pill" data-hours-pill>שעות לפי המרפאה הזו</span>
         </div>
         <div class="clinic-hours-body">
@@ -706,9 +715,13 @@
             type="text"
             class="clinic-name-input"
             data-clinic-name
-            placeholder="מרפאה"
+            placeholder="שם המרפאה (למשל נווה יעקב)"
+            title="לחצי כדי לשנות את שם המרפאה"
             onclick="event.stopPropagation()"
           />
+          <!-- Moran 2026-11-02: "במקום מרפאה 1 מרפאה 2 שיש אפשרות לשנות לשם
+               המרפאה" — the name was already editable but looked like a title. -->
+          <span class="name-edit" data-name-edit aria-hidden="true">✏️</span>
           <span class="pill neutral" data-clinic-pill>—</span>
           <span class="clinic-sum" data-clinic-sum>₪0.00</span>
           <button

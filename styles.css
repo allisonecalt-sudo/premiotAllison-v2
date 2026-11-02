@@ -666,10 +666,11 @@ select option {
   font-variant-numeric: tabular-nums;
 }
 
-/* Two-machon switch on the ribbon: נפרד | מאוחד (2026-11-01) */
+/* Two-machon switch on the ribbon: נפרד | מאוחד (2026-11-01). One line per
+   button since 2026-11-02 (label and ₪ side by side) to keep the ribbon slim. */
 .method-switch {
   display: flex;
-  margin: 8px auto 0;
+  margin: 6px auto 0;
   max-width: 320px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -679,10 +680,12 @@ select option {
 .ms-btn {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 6px 4px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 36px;
+  padding: 5px 4px;
   border: none;
   background: none;
   font-family: inherit;
@@ -716,6 +719,117 @@ select option {
   font-size: 10.5px;
   color: var(--muted);
   margin-top: 4px;
+}
+
+/* Moved off the ribbon 2026-11-02 — sits under it and scrolls away */
+.method-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  margin: -4px 0 6px;
+}
+.method-hint:empty {
+  display: none;
+}
+
+/* Slim ribbon while stuck (her "the banner is a little large" 2026-11-02).
+   Keeps: month, total, משרה, ממוצע, the switch, the verdict. Hides: the
+   progress bar (the verdict says the same in words), clinic chips, the note. */
+.sticky-result.compact {
+  padding: 4px 6px 4px;
+}
+.sticky-result.compact .ribbon-progress,
+.sticky-result.compact .clinic-chips,
+.sticky-result.compact .ms-note {
+  display: none;
+}
+.sticky-result.compact .sticky-month {
+  font-size: 12px;
+  margin-bottom: 1px;
+}
+.sticky-result.compact .total-block .label,
+.sticky-result.compact .avg-block .label {
+  display: none;
+}
+.sticky-result.compact .total-block .value {
+  font-size: 22px;
+}
+.sticky-result.compact .avg-block .value {
+  font-size: 16px;
+}
+.sticky-result.compact .method-switch {
+  margin-top: 4px;
+}
+.sticky-result.compact .ms-btn {
+  min-height: 32px;
+  padding: 3px 4px;
+}
+.sticky-result.compact .cap-status {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+/* Editable clinic name — big, with ✏️ and a dashed line so it reads as
+   "you can change this" (Moran 2026-11-02 didn't know it could). */
+.clinic-header,
+.clinic-hours-header {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.clinic-card .clinic-header .clinic-name-input,
+.clinic-hours-card .clinic-hours-header .clinic-name-input {
+  flex: 1 1 140px;
+  min-width: 120px;
+  font-size: 18px;
+  font-weight: 800;
+  border-bottom: 1px dashed var(--border-strong);
+  border-radius: 6px 6px 0 0;
+}
+.name-edit {
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.75;
+  padding: 4px;
+}
+.name-edit:hover {
+  opacity: 1;
+}
+
+/* Per-clinic color (2+ clinics). Same tone on both tabs. A strong stripe on
+   the start side + tinted header + faint body, so a half-scrolled card still
+   says which clinic it is. Tones: teal (the app accent), blue, plum. */
+[data-clinic-tone='0'] {
+  --tone: 21, 122, 110;
+}
+[data-clinic-tone='1'] {
+  --tone: 47, 92, 170;
+}
+[data-clinic-tone='2'] {
+  --tone: 132, 74, 150;
+}
+.clinic-card[data-clinic-tone],
+.clinic-hours-card[data-clinic-tone] {
+  border-color: rgba(var(--tone), 0.35);
+  border-inline-start: 6px solid rgb(var(--tone));
+  background: rgba(var(--tone), 0.035);
+}
+/* The ₪ stays on the name's line; the pill and מחקי wrap below it */
+.clinic-header .clinic-sum {
+  order: 1;
+}
+.clinic-header .pill,
+.clinic-header .clinic-delete {
+  order: 2;
+}
+.clinic-card[data-clinic-tone] .clinic-header,
+.clinic-card[data-clinic-tone] .clinic-header-stats,
+.clinic-hours-card[data-clinic-tone] .clinic-hours-header {
+  background: rgba(var(--tone), 0.1);
+}
+.clinic-card[data-clinic-tone] .clinic-header .clinic-name-input,
+.clinic-hours-card[data-clinic-tone] .clinic-hours-header .clinic-name-input {
+  color: rgb(var(--tone));
+  border-bottom-color: rgba(var(--tone), 0.45);
 }
 
 /* Month, big, first thing on the frozen ribbon (her ask 2026-06-11) */

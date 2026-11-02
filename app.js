@@ -405,6 +405,28 @@ function loadFromStorage() {
 }
 
 // ---- CLINIC RENDER ----
+// Two+ clinics: each gets its own soft color, the same on the calc and hours
+// tabs (Moran 2026-11-02: "רקע שונה לכל מרפאה… יוצר גם הפרדה שאני עכשיו ממלאת
+// מידע של המרפאה האחרת"). One clinic stays plain.
+function setClinicTone(card, idx) {
+  if (clinics.length >= 2) card.setAttribute('data-clinic-tone', String(idx % 3));
+  else card.removeAttribute('data-clinic-tone');
+}
+
+// The name looked like a title, so nobody knew it could change (Moran asked
+// for a rename that already existed). ✏️ focuses it; focus selects the old
+// name so typing replaces "מרפאה 1".
+function wireNameEdit(card, input) {
+  const pencil = card.querySelector('[data-name-edit]');
+  if (pencil) {
+    pencil.addEventListener('click', (e) => {
+      e.stopPropagation();
+      input.focus();
+    });
+  }
+  input.addEventListener('focus', () => input.select());
+}
+
 function renderClinics() {
   const container = document.getElementById('clinicsContainer');
   const template = document.getElementById('clinic-template');
@@ -431,11 +453,14 @@ function renderClinics() {
       updateChips();
     });
     nameInput.addEventListener('focus', saveUndoSnapshot);
+    wireNameEdit(card, nameInput);
+    setClinicTone(card, idx);
 
     const header = card.querySelector('[data-clinic-header]');
     header.addEventListener('click', (e) => {
       if (e.target.closest('[data-clinic-name]')) return;
       if (e.target.closest('[data-clinic-delete]')) return;
+      if (e.target.closest('[data-name-edit]')) return;
       c.expanded = !c.expanded;
       card.classList.toggle('expanded', c.expanded);
       saveToStorage();
@@ -999,6 +1024,11 @@ function calc() {
   // ₪2,106 vs split ≈ ₪1,600). Each button shows its own total; tapping one
   // drives the whole calculator.
   const switchEl = document.getElementById('methodSwitch');
+  const hintEl = document.getElementById('methodHint');
+  if (hintEl) {
+    hintEl.textContent =
+      together !== null ? 'נפרד או מאוחד? בדקי בדוח הפרמיות איזו שיטה הופעלה החודש.' : '';
+  }
   if (switchEl) {
     if (together !== null) {
       const togetherTotal = together.totalClinic;
@@ -1025,7 +1055,7 @@ function calc() {
           ${btn('separate', 'נפרד', separateTotal, diff > 0)}
           ${btn('together', 'מאוחד', togetherTotal, diff < 0)}
         </div>
-        <div class="ms-note">${waiting ? note : note + ' · בדקי בדוח איזו שיטה הופעלה'}</div>`;
+        ${same && !waiting ? '' : `<div class="ms-note">${note}</div>`}`;
     } else if (clinics.length >= 2) {
       // Say the switch exists before both clinics are filled (2026-11-01:
       // it used to stay invisible until then).
@@ -1848,6 +1878,40 @@ function calcNoTfuka() {
 }
 
 // ---- TABS ----
+// Slim ribbon once it sticks (her "the banner is a little large" 2026-11-02).
+// The bottom margin gives back the height it loses, so the page under it
+// doesn't jump when it shrinks or grows.
+function updateRibbonCompact() {
+  const ribbon = document.querySelector('.sticky-result');
+  const sentinel = document.getElementById('ribbonSentinel');
+  const tabBar = document.querySelector('.tab-bar-wrap');
+  if (!ribbon || !sentinel || !tabBar) return;
+  const visible = sentinel.offsetParent !== null;
+  const stuck = visible && sentinel.getBoundingClientRect().top < tabBar.offsetHeight + 1;
+  if (stuck === ribbon.classList.contains('compact')) return;
+  if (stuck) {
+    const full = ribbon.offsetHeight;
+    ribbon.classList.add('compact');
+    ribbon.style.marginBottom = 10 + full - ribbon.offsetHeight + 'px';
+  } else {
+    ribbon.classList.remove('compact');
+    ribbon.style.marginBottom = '';
+  }
+}
+let ribbonTick = false;
+window.addEventListener(
+  'scroll',
+  () => {
+    if (ribbonTick) return;
+    ribbonTick = true;
+    requestAnimationFrame(() => {
+      ribbonTick = false;
+      updateRibbonCompact();
+    });
+  },
+  { passive: true },
+);
+
 function switchTab(tab) {
   document.getElementById('panel-calc').style.display = tab === 'calc' ? '' : 'none';
   document.getElementById('panel-hours').style.display = tab === 'hours' ? '' : 'none';
@@ -1858,6 +1922,7 @@ function switchTab(tab) {
   ['hours', 'calc', 'notfuka'].forEach((t) =>
     document.getElementById('tab-' + t).setAttribute('aria-selected', String(t === tab)),
   );
+  updateRibbonCompact();
   if (tab === 'notfuka') {
     ntPullFromCalc();
   }
@@ -2204,6 +2269,8 @@ function renderHoursClinics() {
     nameEl.value = c.name || '';
     nameEl.placeholder = 'מרפאה ' + (cidx + 1);
     nameEl.setAttribute('data-clinic-id', c.id);
+    wireNameEdit(card, nameEl);
+    setClinicTone(card, cidx);
     const pillEl = card.querySelector('[data-hours-pill]');
     pillEl.textContent = 'שעות לפי המרפאה הזו';
 
