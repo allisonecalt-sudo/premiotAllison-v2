@@ -707,8 +707,10 @@ function calc() {
   let togetherInputs = null;
   if (activeCount >= 2 && !emptyState) {
     togetherInputs = pooledClinicInputs();
-    // Pooled = everything under the FIRST-listed machon, per how the reports do it
-    togetherInputs.name = (clinics[0].name || 'מרפאה 1') + ' (מאוחד)';
+    // No clinic name: Clalit pools under whichever machon it picks (Moran's
+    // reports pool under Pisgat Ze'ev though she lists Neve Yaakov first), and
+    // the pooled math doesn't depend on which one.
+    togetherInputs.name = 'מאוחד';
     together = calcClinic(togetherInputs, sharedPotential, fullCeiling, avgShnati, tarif, makdam);
   }
   const useTogether = calcMethod === 'together' && together !== null;
@@ -761,6 +763,18 @@ function calc() {
       // preserve accent on totalClinic (set in template)
       if (tone) el.classList.add(tone);
     };
+    // Merged mode: this clinic has no amount of its own — showing the
+    // separate-method ₪ under a merged headline contradicted it (2026-11-01).
+    if (useTogether && r.hasAnyInput) {
+      setReadout('premiatAvoda', '—');
+      setReadout('premiatHeadrut', '—');
+      if (sum) sum.textContent = 'חלק מהמאוחד';
+      if (pill) {
+        pill.className = 'pill neutral';
+        pill.textContent = 'במאוחד';
+      }
+    }
+
     if (r.hasAnyInput) {
       setMini('mishraPct', (r.mishraPct * 100).toFixed(1) + '%');
       // ממוצע per place (her ask 2026-07-05). 2 decimals — that's the
@@ -776,8 +790,8 @@ function calc() {
       // סך פרמיה must match the clinic sum + big number to the agora — showing
       // a rounded ₪1,283 next to ₪1,282.72 on the same card eroded trust in a
       // calculator whose only job is to match the tlush (Allison, 2026-06-10).
-      setMini('takaraClinic', fmtILS0(r.takaraClinic));
-      setMini('totalClinic', fmtILS(r.totalClinic));
+      setMini('takaraClinic', useTogether ? '—' : fmtILS0(r.takaraClinic));
+      setMini('totalClinic', useTogether ? '—' : fmtILS(r.totalClinic));
     } else {
       // Empty clinic: show em-dashes, calm — don't draw eye to nothing.
       setMini('mishraPct', '—');
@@ -928,51 +942,44 @@ function calc() {
   // the alert logic below uses it.
   const atOrOverCap = totalCeiling > 0 && totalPremium >= totalCeiling - 0.5;
 
-  // ---- Together-vs-separate comparison (2-machon workers) ----
+  // ---- Two-machon switch on the frozen ribbon: נפרד | מאוחד ----
   // Clalit's premia reports flip between computing each machon separately and
-  // pooling everything under one machon. The methods only differ when one
-  // machon is below the 1.0 average gate — show both so the user can lay the
-  // official report next to the calculator and see which method was used.
-  const compareArea = document.getElementById('compareArea');
-  if (compareArea) {
+  // pooling everything as one. The two differ when a machon is below the 1.0
+  // gate OR above 2.0 (the payment average stops at 1.0 per machon, so a
+  // strong machon's surplus is wasted when split — Moran's Jun 2026: merged
+  // ₪2,106 vs split ≈ ₪1,600). Each button shows its own total; tapping one
+  // drives the whole calculator.
+  const switchEl = document.getElementById('methodSwitch');
+  if (switchEl) {
     if (together !== null) {
       const togetherTotal = together.totalClinic;
       const diff = separateTotal - togetherTotal;
       const same = Math.abs(diff) < 0.5;
-      const firstName = clinics[0].name || 'מרפאה 1';
-      // Each method row is a radio: tap it and THAT method drives the whole
-      // calculator above. The worth-more row gets the ₪ bolded green.
-      const methodRow = (method, label, amount, isBest) => {
+      const btn = (method, label, amount, isBest) => {
         const active = useTogether === (method === 'together');
-        return `
-      <div onclick="setCalcMethod('${method}')" role="radio" aria-checked="${active}"
-           style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px; cursor:pointer; border-radius:8px; ${active ? 'background:rgba(21,122,110,0.08);' : ''}">
-        <span style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text);">
-          <span aria-hidden="true" style="flex:none; width:14px; height:14px; border-radius:50%; border:2px solid ${active ? '#157a6e' : 'var(--border)'}; ${active ? 'background:#157a6e; box-shadow:inset 0 0 0 2.5px var(--surface);' : ''}"></span>
-          <span>${label}${active ? ' <span style="font-size:10px; color:#157a6e; font-weight:700; white-space:nowrap;">← מוצג למעלה</span>' : ''}</span>
-        </span>
-        <span style="flex:none; font-size:15px; ${isBest && !same ? 'font-weight:800; color:#157a6e;' : 'font-weight:600; color:var(--text);'}">${fmtILS(amount)}</span>
-      </div>`;
+        return `<button type="button" class="ms-btn${active ? ' active' : ''}${isBest && !same ? ' best' : ''}"
+          aria-pressed="${active}" onclick="setCalcMethod('${method}')">
+          <span class="ms-label">${label}</span>
+          <span class="ms-amt">${fmtILS0(amount)}</span>
+        </button>`;
       };
-      const worthMore = same
+      const note = same
         ? 'החודש אין הבדל בין השיטות.'
         : diff > 0
-          ? `<strong>כל מכון בנפרד שווה יותר — ב־${fmtILS(diff)}</strong>.`
-          : `<strong>המאוחד שווה יותר — ב־${fmtILS(-diff)}</strong>.`;
-      compareArea.innerHTML = `
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
-      <div style="font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">
-        2 מרפאות — שתי שיטות חישוב · בחרי מה להציג
-      </div>
-      ${methodRow('separate', 'כל מרפאה בנפרד', separateTotal, diff > 0)}
-      <div style="border-top:1px solid var(--border); margin:2px 0;"></div>
-      ${methodRow('together', `2 המרפאות יחד תחת ${escapeHtml(firstName)}`, togetherTotal, diff < 0)}
-      <div style="margin-top:8px; font-size:11px; color:var(--muted);">
-        ${worthMore} כללית לא עקבית בשיטה — השווי את שתי השורות לדוח הפרמיות בתלוש כדי לראות איזו שיטה הדוח בחר, ובדקי שכל הטיפולים נספרו.
-      </div>
-    </div>`;
+          ? `נפרד שווה יותר ב־${fmtILS0(diff)}.`
+          : `מאוחד שווה יותר ב־${fmtILS0(-diff)}.`;
+      switchEl.innerHTML = `
+        <div class="method-switch" role="group" aria-label="שיטת חישוב לשתי מרפאות">
+          ${btn('separate', 'נפרד', separateTotal, diff > 0)}
+          ${btn('together', 'מאוחד', togetherTotal, diff < 0)}
+        </div>
+        <div class="ms-note">${note} כללית מחליפה שיטה מחודש לחודש — השווי לדוח הפרמיות.</div>`;
+    } else if (clinics.length >= 2) {
+      // Say the switch exists before both clinics are filled (2026-11-01:
+      // it used to stay invisible until then).
+      switchEl.innerHTML = '<div class="ms-note">מלאי את שתי המרפאות כדי לראות נפרד / מאוחד.</div>';
     } else {
-      compareArea.innerHTML = '';
+      switchEl.innerHTML = '';
     }
   }
 

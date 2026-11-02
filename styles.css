@@ -650,6 +650,58 @@ select option {
   font-variant-numeric: tabular-nums;
 }
 
+/* Two-machon switch on the ribbon: נפרד | מאוחד (2026-11-01) */
+.method-switch {
+  display: flex;
+  margin: 8px auto 0;
+  max-width: 320px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.ms-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ms-btn + .ms-btn {
+  border-inline-start: 1px solid var(--border);
+}
+.ms-btn .ms-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+.ms-btn .ms-amt {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ms-btn.best .ms-amt {
+  color: var(--accent);
+}
+.ms-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+.ms-btn.active .ms-amt {
+  color: #fff;
+}
+.ms-note {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 /* Month, big, first thing on the frozen ribbon (her ask 2026-06-11) */
 .sticky-month {
   text-align: center;

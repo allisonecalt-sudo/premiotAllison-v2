@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20261019-1100" />
+    <link rel="stylesheet" href="styles.css?v=20261102-0735" />
   </head>
   <body>
     <noscript>
@@ -67,7 +67,7 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.14 · 19.10.2026 11:00</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.15 · 02.11.2026 07:35</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
@@ -348,16 +348,15 @@
             </div>
           </div>
           <div id="clinicChips" class="clinic-chips"></div>
+          <!-- Two-machon switch: נפרד | מאוחד, on the frozen ribbon so it's
+               seen without hunting (Moran's ask 2026-11-01: "בלחיצה אחת"). Only
+               rendered with 2+ clinics. Replaced the radio card that sat below. -->
+          <div id="methodSwitch"></div>
           <!-- THE verdict for this month — her ask 2026-06-11: "i just want
                am i under or over this month". Replaces the month-over-month
                diff ("i dont care abt previous month at all"). -->
           <div id="capStatus" class="cap-status"></div>
         </div>
-
-        <!-- Two-methods card (separate vs pooled) — PINNED TO TOP, first thing
-             under the ribbon (her ask 2026-07-05: "this is pinned to top").
-             Only rendered when 2 clinics have input. -->
-        <div id="compareArea" style="margin-top: 10px"></div>
 
         <!-- Month FIRST — which month is this premia for? (Allison 2026-06-10:
              "it needs to say what month we are calculating on top") -->
@@ -882,6 +881,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20261019-1100"></script>
+    <script src="app.js?v=20261102-0735"></script>
   </body>
 </html>
