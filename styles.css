@@ -252,6 +252,22 @@ select option {
     background 120ms ease,
     color 120ms ease;
 }
+/* Bigger invisible hit area for the small "מחקי" button, same look (audit
+   2026-11-02). The "?" dots already have one (.tip-btn::after below). */
+.clinic-delete::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
+.clinic-delete {
+  position: relative;
+}
+/* Merged mode: the card's quiet "part of merged" label (not a ₪ amount) */
+.clinic-sum.merged {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
 .tip-btn:hover {
   background: var(--accent);
   color: #fff;
@@ -961,6 +977,11 @@ select option {
   color: var(--accent);
   letter-spacing: -0.01em;
   line-height: 1.05;
+}
+/* Two per-clinic averages ("1.00 / 0.41") in נפרד mode */
+.sticky-result .avg-block .value.multi {
+  font-size: 14px;
+  white-space: nowrap;
 }
 .sticky-result .progress-track {
   background: var(--surface-3);

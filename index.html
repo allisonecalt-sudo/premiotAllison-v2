@@ -25,7 +25,7 @@
     /></noscript>
     <!-- ?v= query = cache-buster. Bump it on every deploy (phones cache the
          old version and changes look like they never shipped). -->
-    <link rel="stylesheet" href="styles.css?v=20261102-0735" />
+    <link rel="stylesheet" href="styles.css?v=20261102-0810" />
   </head>
   <body>
     <noscript>
@@ -67,17 +67,37 @@
     <div class="header">
       <div class="sub">כללית | ריפוי בעיסוק | התפתחות הילד | ירושלים</div>
       <h1>מחשבון פרמיות</h1>
-      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.15 · 02.11.2026 07:35</div>
+      <div class="note">מחשבון לא רשמי — תמיד צלבני מול התלוש · גרסה 11.16 · 02.11.2026 08:10</div>
     </div>
 
     <!-- Tab Navigation — frozen at top on every tab (her ask 2026-06-11) -->
     <div class="tab-bar-wrap">
-      <div class="tab-bar">
-        <button id="tab-hours" class="tab-btn active" onclick="switchTab('hours')">
+      <div class="tab-bar" role="tablist" aria-label="מסכי המחשבון">
+        <button
+          id="tab-hours"
+          class="tab-btn active"
+          role="tab"
+          aria-selected="true"
+          onclick="switchTab('hours')"
+        >
           חישוב שעות
         </button>
-        <button id="tab-calc" class="tab-btn" onclick="switchTab('calc')">מחשבון פרמיה</button>
-        <button id="tab-notfuka" class="tab-btn" onclick="switchTab('notfuka')">
+        <button
+          id="tab-calc"
+          class="tab-btn"
+          role="tab"
+          aria-selected="false"
+          onclick="switchTab('calc')"
+        >
+          מחשבון פרמיה
+        </button>
+        <button
+          id="tab-notfuka"
+          class="tab-btn"
+          role="tab"
+          aria-selected="false"
+          onclick="switchTab('notfuka')"
+        >
           תכנון תפוקות
         </button>
       </div>
@@ -883,6 +903,6 @@
     </template>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20261102-0735"></script>
+    <script src="app.js?v=20261102-0810"></script>
   </body>
 </html>

@@ -338,6 +338,22 @@ function saveToStorage() {
   }
 }
 
+// Restore a saved month label. If it is outside the list (e.g. a v1 save from
+// 2025), ADD it rather than silently falling back to today — that put today's
+// month on the ribbon over old numbers with no stale banner (audit 2026-11-02).
+function selectSavedMonth(label) {
+  const sel = document.getElementById('selectedMonth');
+  if (!sel || !label) return;
+  if (![...sel.options].some((o) => o.value === label)) {
+    const opt = document.createElement('option');
+    opt.value = label;
+    opt.textContent = label;
+    sel.insertBefore(opt, sel.firstChild);
+  }
+  sel.value = label;
+  document.getElementById('selectedMonthDisplay').textContent = label;
+}
+
 function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -348,14 +364,7 @@ function loadFromStorage() {
       if (data.avgShnati !== undefined) document.getElementById('avgShnati').value = data.avgShnati;
       if (data.isVetek === '1') setVetek(true, true);
       if (data.selectedMonth) {
-        const sel = document.getElementById('selectedMonth');
-        for (let i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value === data.selectedMonth) {
-            sel.selectedIndex = i;
-            break;
-          }
-        }
-        document.getElementById('selectedMonthDisplay').textContent = data.selectedMonth;
+        selectSavedMonth(data.selectedMonth);
       }
       if (Array.isArray(data.clinics) && data.clinics.length > 0) {
         clinics = data.clinics.map((c) => ({ ...newClinicObj(), ...c }));
@@ -382,14 +391,7 @@ function loadFromStorage() {
       c0.tifukot = old.tifukot || '';
       clinics = [c0];
       if (old.selectedMonth) {
-        const sel = document.getElementById('selectedMonth');
-        for (let i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value === old.selectedMonth) {
-            sel.selectedIndex = i;
-            break;
-          }
-        }
-        document.getElementById('selectedMonthDisplay').textContent = old.selectedMonth;
+        selectSavedMonth(old.selectedMonth);
       }
       try {
         localStorage.removeItem(LEGACY_KEY);
@@ -443,15 +445,23 @@ function renderClinics() {
     deleteBtn.style.display = clinics.length > 1 ? '' : 'none';
     deleteBtn.addEventListener('click', () => {
       if (clinics.length <= 1) return;
+      // Two taps, like איפוס: one small tap next to the clinic's ₪ used to
+      // delete it outright (audit 2026-11-02).
+      if (deleteBtn.dataset.armed !== '1') {
+        deleteBtn.dataset.armed = '1';
+        deleteBtn.textContent = 'בטוח? לחצי שוב';
+        setTimeout(() => {
+          deleteBtn.dataset.armed = '';
+          deleteBtn.textContent = 'מחקי';
+        }, 3000);
+        return;
+      }
       saveUndoSnapshot();
       const removedId = c.id;
       clinics = clinics.filter((cc) => cc.id !== removedId);
       if (lastEditedClinicId === removedId) lastEditedClinicId = null;
-      // Drop the clinic's Hours-tab section data too
-      if (hoursState.byClinic[removedId]) {
-        delete hoursState.byClinic[removedId];
-        saveHoursState();
-      }
+      // The clinic's hours-tab days are KEPT (keyed by its id), so undo brings
+      // the clinic back with its days. Deleting them here made undo half-work.
       renderClinics();
       renderHoursClinics();
       calc();
@@ -511,6 +521,9 @@ function addClinic() {
 // which one drives the headline; the compare card always shows both totals.
 const METHOD_KEY = 'premiot_calc_method_v2';
 let calcMethod = 'separate';
+// Both methods' totals from the last calc() (2+ clinics only), so the planner
+// tab — which always pools — can say what the calculator shows in נפרד.
+let lastTwoMethod = null;
 try {
   if (localStorage.getItem(METHOD_KEY) === 'together') calcMethod = 'together';
 } catch (e) {
@@ -523,7 +536,10 @@ function setCalcMethod(m) {
   } catch (e) {
     /* ignore */
   }
+  const hadFocus = !!document.activeElement?.closest('#methodSwitch');
   calc();
+  // calc() redraws the switch, which dropped keyboard focus (audit 2026-11-02)
+  if (hadFocus) document.querySelector('#methodSwitch .ms-btn.active')?.focus();
 }
 
 // Sum every clinic's inputs into one synthetic machon (for the 'together'
@@ -551,12 +567,14 @@ function pooledClinicInputs() {
 
 // ---- CORE CALC (per-clinic + combined) ----
 function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
-  const shaTeken = parseFloat(c.shaTeken) || 0;
-  const shaNosfot = parseFloat(c.shaNosfot) || 0;
-  const shaLaTipulit = parseFloat(c.shaLaTipulit) || 0;
-  const headrutMazaka = parseFloat(c.headrutMazaka) || 0;
-  const headrutLoMazaka = parseFloat(c.headrutLoMazaka) || 0;
-  const tifukot = parseFloat(c.tifukot) || 0;
+  // Negative entries are typos, never real hours (−5 מזכה paid −₪182, audit
+  // 2026-11-02).
+  const shaTeken = Math.max(0, parseFloat(c.shaTeken) || 0);
+  const shaNosfot = Math.max(0, parseFloat(c.shaNosfot) || 0);
+  const shaLaTipulit = Math.max(0, parseFloat(c.shaLaTipulit) || 0);
+  const headrutMazaka = Math.max(0, parseFloat(c.headrutMazaka) || 0);
+  const headrutLoMazaka = Math.max(0, parseFloat(c.headrutLoMazaka) || 0);
+  const tifukot = Math.max(0, parseFloat(c.tifukot) || 0);
 
   const shaAvoda = Math.max(
     0,
@@ -609,7 +627,10 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   // been capped every month since July 2025, so her own card never showed the badge.
   // (Her June-2026 slip: pre-cap ₪2,808.06 against a ₪2,754 ceiling.) The ribbon
   // verdict and the 🎉 alert always used the correct test; this was the odd one out.
-  const atCap = premiatAvoda > 0 && premiatAvoda >= takaraClinic - 0.5;
+  // Tests the TOTAL (work + absence), like the ribbon: when the absence premium
+  // tops the work premium up to the ceiling, the card said "✓ עבר" under a
+  // ribbon saying "על התקרה" (audit 2026-11-02). Display only — no ₪ changes.
+  const atCap = totalClinic > 0 && totalClinic >= takaraClinic - 0.5;
 
   // Pill: cap > warn > ok > neutral
   let pill = 'neutral';
@@ -666,12 +687,20 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   };
 }
 
+// ממוצע שנתי on the payslip is capped at 1.00 (the payment average is "עד
+// מקסימום 1"). HTML max="1" doesn't stop typing — a raw 1.9 jumped the total
+// ₪2,348 → ₪3,078 (audit 2026-11-02). Every reader clamps; calc() warns.
+function avgShnatiVal() {
+  return Math.min(Math.max(v('avgShnati'), 0), 1);
+}
+
 function calc() {
   const tarif = v('tarif');
   const fullCeiling = v('takara');
   const makdam = v('makdam');
   const sharedPotential = v('shaPotential');
-  const avgShnati = v('avgShnati');
+  const avgShnatiTyped = v('avgShnati');
+  const avgShnati = avgShnatiVal();
 
   // Per-clinic
   const results = clinics.map((c) =>
@@ -703,6 +732,7 @@ function calc() {
   // are computed and a toggle picks which drives the whole calculator.) ----
   const activeCount = results.filter((r) => r.hasAnyInput).length;
   const separateTotal = totalPremium;
+  const separateCeiling = totalCeiling;
   let together = null;
   let togetherInputs = null;
   if (activeCount >= 2 && !emptyState) {
@@ -714,6 +744,7 @@ function calc() {
     together = calcClinic(togetherInputs, sharedPotential, fullCeiling, avgShnati, tarif, makdam);
   }
   const useTogether = calcMethod === 'together' && together !== null;
+  lastTwoMethod = together !== null ? { useTogether, separateTotal, separateCeiling } : null;
   if (useTogether) {
     totalPremium = together.totalClinic;
     totalCeiling = together.takaraClinic;
@@ -768,12 +799,13 @@ function calc() {
     if (useTogether && r.hasAnyInput) {
       setReadout('premiatAvoda', '—');
       setReadout('premiatHeadrut', '—');
+      // One quiet label, not a pill AND a big green line saying the same.
       if (sum) sum.textContent = 'חלק מהמאוחד';
-      if (pill) {
-        pill.className = 'pill neutral';
-        pill.textContent = 'במאוחד';
-      }
+      if (pill) pill.style.display = 'none';
+    } else if (pill) {
+      pill.style.display = '';
     }
+    if (sum) sum.classList.toggle('merged', useTogether && r.hasAnyInput);
 
     if (r.hasAnyInput) {
       setMini('mishraPct', (r.mishraPct * 100).toFixed(1) + '%');
@@ -882,9 +914,19 @@ function calc() {
   // On a fresh page (no input yet) show "—", not "0.000" — a hard zero reads
   // as a real computed average and makes the empty calc look broken/alarming
   // (5b, 2026-06-10). Real zeros once data exists are still shown.
-  document.getElementById('r_avg_sticky').textContent = emptyState
+  // The average Clalit PAYS on: 2 decimals, its rounding (was 3 decimals,
+  // unrounded — 0.275 on the ribbon vs 0.28 on the card and payslip). In נפרד
+  // with 2+ clinics each block is paid on its own average, so show those
+  // ("1.00 / 0.41") instead of a pooled figure no block uses (audit 2026-11-02).
+  const avgStickyEl = document.getElementById('r_avg_sticky');
+  const activeResults = results.filter((r) => r.hasAnyInput);
+  const perClinicAvg = !useTogether && activeResults.length >= 2;
+  avgStickyEl.textContent = emptyState
     ? '—'
-    : combinedAvgClamped.toFixed(3);
+    : perClinicAvg
+      ? activeResults.map((r) => r.avgTipulim.toFixed(2)).join(' / ')
+      : (Math.round(+(combinedAvgClamped * 100).toFixed(6)) / 100).toFixed(2);
+  avgStickyEl.classList.toggle('multi', !emptyState && perClinicAvg);
   // משרה on the frozen ribbon (her ask, 2026-06-11). Same empty-state gate as
   // ממוצע. One decimal matches the clinic mini-stats.
   document.getElementById('r_mishra_sticky').textContent = emptyState
@@ -938,7 +980,10 @@ function calc() {
 
   // chips per-clinic in sticky (only when multi; not in together mode —
   // the pooled method has no per-machon split)
-  updateChips(useTogether ? null : results);
+  // With 2+ filled clinics the נפרד|מאוחד switch already shows the totals and
+  // each card shows its own — the chips were a third copy on a ribbon that
+  // eats a third of the phone (audit 2026-11-02).
+  updateChips(together !== null ? null : results);
 
   // The התקדמות-לתקרה progress block that rendered here was removed
   // 2026-06-11 (her call): it duplicated the frozen ribbon exactly — same
@@ -967,17 +1012,20 @@ function calc() {
           <span class="ms-amt">${fmtILS0(amount)}</span>
         </button>`;
       };
-      const note = same
-        ? 'החודש אין הבדל'
-        : diff > 0
-          ? `נפרד שווה יותר ב־${fmtILS0(diff)}`
-          : `מאוחד שווה יותר ב־${fmtILS0(-diff)}`;
+      const waiting = togetherTotal < 0.5 && separateTotal < 0.5;
+      const note = waiting
+        ? 'ממתין לתפוקות'
+        : same
+          ? 'החודש אין הבדל'
+          : diff > 0
+            ? `נפרד שווה יותר ב־${fmtILS0(diff)}`
+            : `מאוחד שווה יותר ב־${fmtILS0(-diff)}`;
       switchEl.innerHTML = `
         <div class="method-switch" role="group" aria-label="שיטת חישוב לשתי מרפאות">
           ${btn('separate', 'נפרד', separateTotal, diff > 0)}
           ${btn('together', 'מאוחד', togetherTotal, diff < 0)}
         </div>
-        <div class="ms-note">${note} · השווי לדוח הפרמיות</div>`;
+        <div class="ms-note">${waiting ? note : note + ' · בדקי בדוח איזו שיטה הופעלה'}</div>`;
     } else if (clinics.length >= 2) {
       // Say the switch exists before both clinics are filled (2026-11-01:
       // it used to stay invisible until then).
@@ -1003,7 +1051,12 @@ function calc() {
     // one can pass, which is exactly where the two methods differ.
     const gateResults = useTogether ? [together] : results;
     const blocked = gateResults.find((r) => r.hasAnyInput && r.belowThreshold);
-    const lowAvg = gateResults.find((r) => r.hasAnyInput && r.belowAvgGate && !r.belowThreshold);
+    // Not before tfukot are typed: right after "העבירי הכל" every clinic is
+    // at average 0, and the first thing a new OT saw was a red failure next
+    // to a calm "ממתין לתפוקות" (audit 2026-11-02).
+    const lowAvg = gateResults.find(
+      (r) => r.hasAnyInput && r.tipulimMushkalim > 0 && r.belowAvgGate && !r.belowThreshold,
+    );
     if (blocked) {
       alertArea.innerHTML = `<div class="alert danger">
         <div class="atitle">⚠️ סף תפוקתי לא הושג</div>
@@ -1043,18 +1096,22 @@ function calc() {
         const c = sugClinics[bestClinicIdx];
         const clinicName = c.name || 'מרפאה ' + (bestClinicIdx + 1);
         const tifukot = parseFloat(c.tifukot) || 0;
+        // Every candidate step is run through calcClinic itself, so the advice
+        // reaches the cap under Clalit's 2-decimal rounding. The old closed-form
+        // target used the unrounded average and could leave her ₪2–28 short
+        // after following it (audit 2026-11-02).
+        const reachesCap = (inputs) => {
+          const t = calcClinic(inputs, sharedPotential, fullCeiling, avgShnati, tarif, makdam);
+          return t.totalClinic >= t.takaraClinic - 0.5;
+        };
         if (r.avgTipulim < 1) {
-          const neededAvg =
-            r.totalHoursLeTashlum > 0 && tarif > 0
-              ? (r.takaraClinic - r.premiatHeadrutBefore) / (r.totalHoursLeTashlum * tarif)
-              : 0;
-          const cappedNeededAvg = Math.min(neededAvg, 1);
-          const neededRawAvg = cappedNeededAvg + 1;
-          const neededTipulim = Math.ceil(neededRawAvg * r.mecane);
-          const extraTifukot = Math.max(
-            0,
-            Math.ceil((neededTipulim - r.tipulimMushkalim) / makdam),
-          );
+          let extraTifukot = 0;
+          for (let n = 1; n <= 300; n++) {
+            if (reachesCap({ ...c, tifukot: tifukot + n })) {
+              extraTifukot = n;
+              break;
+            }
+          }
           if (extraTifukot > 0) {
             suggestions += `<div class="alert warning" style="margin-bottom:8px;">
               <div class="atitle">📋 אפשרות א׳: עוד תפוקות ב${escapeHtml(clinicName)}</div>
@@ -1074,13 +1131,9 @@ function calc() {
         //   → x <= shaAvoda − 0.5 × (shaAvoda + shaLaTipulit)
         const availableShalet = Math.max(0, r.shaAvoda - 0.5 * (r.shaAvoda + shaLaTipulit));
         if (availableShalet > 0.1 && r.avgTipulim < 1) {
-          const targetPremium = Math.max(0, r.takaraClinic - r.premiatHeadrutBefore);
           let shaletNeeded = null;
-          for (let x = 0.5; x <= availableShalet; x += 0.5) {
-            const newMecane = Math.max(r.mecane - x, 0.01);
-            const newAvg = Math.min(Math.max(r.tipulimMushkalim / newMecane - 1, 0), 1);
-            const newPremium = r.totalHoursLeTashlum * newAvg * tarif;
-            if (newPremium >= targetPremium) {
+          for (let x = 0.5; x <= availableShalet + 1e-9; x += 0.5) {
+            if (reachesCap({ ...c, shaLaTipulit: shaLaTipulit + x })) {
               shaletNeeded = x;
               break;
             }
@@ -1122,7 +1175,17 @@ function calc() {
       <div class="abody">בלי הממוצע השנתי (מהתלוש) פרמיית ההעדרות מחושבת כ-0. הזיני אותו למעלה בפרטי עובדת.</div>
     </div>` + alertArea.innerHTML;
   }
-  document.getElementById('avgShnati').classList.toggle('field-missing', avgShnatiMissing);
+  const avgShnatiTooHigh = avgShnatiTyped > 1;
+  if (avgShnatiTooHigh) {
+    alertArea.innerHTML =
+      `<div class="alert warning" style="margin-bottom:8px;">
+      <div class="atitle">⚠️ ממוצע שנתי גבוה מ-1</div>
+      <div class="abody">בתלוש הממוצע השנתי הוא עד 1.00 — החישוב משתמש ב-1.00. בדקי את המספר בפרטי עובדת.</div>
+    </div>` + alertArea.innerHTML;
+  }
+  document
+    .getElementById('avgShnati')
+    .classList.toggle('field-missing', avgShnatiMissing || avgShnatiTooHigh);
 
   // Auto-open the פירוט drill-down when result exists, only first time
   maybeAutoOpenDetail(totalPremium > 0 && anyClinicHasInput);
@@ -1210,15 +1273,14 @@ function showToast(msg) {
 // May... is it clear it's May"). When the saved month is behind the calendar,
 // say so on both tabs instead of letting old data pose as current.
 function checkStaleMonth() {
+  // Reads the SAME month the ribbon prints (#selectedMonth = the month the
+  // numbers were applied for). It used to read the hours-tab picker, so an
+  // unapplied pick there showed "data from December" under a November ribbon.
   const now = new Date();
-  const cur = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  const saved = hoursState.month;
+  const cur = MONTH_NAMES_HE[now.getMonth()] + ' ' + now.getFullYear();
+  const saved = document.getElementById('selectedMonth')?.value || '';
   const stale = !!saved && saved !== cur;
-  let label = '';
-  if (stale) {
-    const [y, m] = saved.split('-').map(Number);
-    label = `⚠️ הנתונים כאן מ־${MONTH_NAMES_HE[m - 1] || ''} ${y} — לחודש חדש: 🔄 איפוס, ואז מלאי שעות מחדש`;
-  }
+  const label = stale ? `⚠️ הנתונים כאן מ־${saved} — לחודש חדש: 🔄 איפוס, ואז מלאי שעות מחדש` : '';
   ['staleMonthHintHours', 'staleMonthHintCalc'].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1296,7 +1358,7 @@ function getSummaryData() {
   const fullCeiling = v('takara');
   const makdam = v('makdam');
   const sharedPotential = v('shaPotential');
-  const avgShnati = v('avgShnati');
+  const avgShnati = avgShnatiVal();
   const isVetek = fullCeiling === 5838.25;
   const selectedMonth = document.getElementById('selectedMonth')?.value || '';
   const results = clinics.map((c) =>
@@ -1356,10 +1418,14 @@ function downloadPDF() {
       <tr class="accent"><td>שעות עבודה (מחושב)</td><td>${c.shaAvoda.toFixed(2)}</td></tr>
       <tr><td>אחוז משרה במרפאה</td><td>${(c.mishraPct * 100).toFixed(1)}%</td></tr>
       <tr><td>ממוצע לתשלום</td><td>${c.avgTipulim.toFixed(2)}</td></tr>
-      <tr><td>תקרה במרפאה</td><td>${fmtILS(c.takaraClinic)}</td></tr>
+      ${
+        d.method === 'together'
+          ? `<tr class="accent"><td>סך פרמיה במרפאה</td><td>חלק מהמאוחד</td></tr>`
+          : `<tr><td>תקרה במרפאה</td><td>${fmtILS(c.takaraClinic)}</td></tr>
       <tr><td>פרמיית עבודה</td><td>${fmtILS(c.premiatAvoda)}</td></tr>
       <tr><td>פרמיית העדרות</td><td>${fmtILS(c.premiatHeadrut)}</td></tr>
-      <tr class="accent"><td>סך פרמיה במרפאה</td><td>${fmtILS(c.totalClinic)}</td></tr>
+      <tr class="accent"><td>סך פרמיה במרפאה</td><td>${fmtILS(c.totalClinic)}</td></tr>`
+      }
     </table>`,
     )
     .join('');
@@ -1397,8 +1463,8 @@ ${clinicSections}
   <tr><th colspan="2">סיכום כולל</th></tr>
   ${
     d.hasTwoMethods
-      ? `<tr><td>שיטת חישוב</td><td>${d.method === 'together' ? 'מאוחד תחת מכון אחד' : 'כל מכון בנפרד'}</td></tr>
-  <tr><td>לפי השיטה השנייה (${d.method === 'together' ? 'כל מכון בנפרד' : 'מאוחד'})</td><td>${fmtILS(d.otherMethodPremium)}</td></tr>`
+      ? `<tr><td>שיטת חישוב</td><td>${d.method === 'together' ? 'מאוחד' : 'נפרד'}</td></tr>
+  <tr><td>לפי השיטה השנייה (${d.method === 'together' ? 'נפרד' : 'מאוחד'})</td><td>${fmtILS(d.otherMethodPremium)}</td></tr>`
       : ''
   }
   <tr><td>תקרה כוללת</td><td>${fmtILS(d.totalCeiling)}</td></tr>
@@ -1441,17 +1507,23 @@ function downloadExcel() {
     rows.push(['שעות עבודה (מחושב)', c.shaAvoda.toFixed(2)]);
     rows.push(['אחוז משרה במרפאה', (c.mishraPct * 100).toFixed(1) + '%']);
     rows.push(['ממוצע לתשלום', c.avgTipulim.toFixed(2)]);
-    rows.push(['תקרה במרפאה', c.takaraClinic.toFixed(2)]);
-    rows.push(['פרמיית עבודה', c.premiatAvoda.toFixed(2)]);
-    rows.push(['פרמיית העדרות', c.premiatHeadrut.toFixed(2)]);
-    rows.push(['סך פרמיה במרפאה', c.totalClinic.toFixed(2)]);
+    // Merged mode: a clinic has no amount of its own (the screen says the
+    // same since 2026-11-01; the export printed split ₪ under a merged total).
+    if (d.method === 'together') {
+      rows.push(['סך פרמיה במרפאה', 'חלק מהמאוחד']);
+    } else {
+      rows.push(['תקרה במרפאה', c.takaraClinic.toFixed(2)]);
+      rows.push(['פרמיית עבודה', c.premiatAvoda.toFixed(2)]);
+      rows.push(['פרמיית העדרות', c.premiatHeadrut.toFixed(2)]);
+      rows.push(['סך פרמיה במרפאה', c.totalClinic.toFixed(2)]);
+    }
     rows.push(['', '']);
   });
   rows.push(['סיכום כולל', '']);
   if (d.hasTwoMethods) {
-    rows.push(['שיטת חישוב', d.method === 'together' ? 'מאוחד תחת מכון אחד' : 'כל מכון בנפרד']);
+    rows.push(['שיטת חישוב', d.method === 'together' ? 'מאוחד' : 'נפרד']);
     rows.push([
-      'לפי השיטה השנייה (' + (d.method === 'together' ? 'כל מכון בנפרד' : 'מאוחד') + ')',
+      'לפי השיטה השנייה (' + (d.method === 'together' ? 'נפרד' : 'מאוחד') + ')',
       d.otherMethodPremium.toFixed(2),
     ]);
   }
@@ -1513,7 +1585,7 @@ function ntPullFromCalc() {
   const note = document.getElementById('ntSyncNote');
   if (note) {
     if (clinics.length > 1) {
-      note.textContent = 'סכום כל המרפאות — עריכה כאן לניסוי בלבד';
+      note.textContent = 'סכום כל המרפאות · שינוי כאן לא נשמר במחשבון';
     } else {
       note.textContent = pulledAny
         ? 'מקושר למחשבון ✓ — עריכה מתעדכנת בכל מקום'
@@ -1597,6 +1669,19 @@ function calcNoTfuka() {
 
   let html = '';
 
+  // 2+ clinics: this tab pools them (= מאוחד). If the calculator is on נפרד,
+  // say so and give its numbers — the two tabs used to disagree silently
+  // (calc "חסר ₪1,034" vs here "מגיעים לתקרה ✓", audit 2026-11-02).
+  if (clinics.length > 1 && lastTwoMethod && !lastTwoMethod.useTogether) {
+    const gap = lastTwoMethod.separateCeiling - lastTwoMethod.separateTotal;
+    html += `<div class="alert warning" style="margin-bottom:10px;">
+      <div class="atitle">החישוב בטאב הזה = מאוחד</div>
+      <div class="abody">במחשבון בחרת נפרד: ${fmtILS0(lastTwoMethod.separateTotal)} מתוך תקרה ${fmtILS0(lastTwoMethod.separateCeiling)}${
+        gap > 0.5 ? ` — <strong>חסר ${fmtILS0(gap)}</strong>` : ' — על התקרה ✓'
+      }.</div>
+    </div>`;
+  }
+
   // THE question (Allison, 2026-06-10: "how many hours could do nothing —
   // not shalat, not vacation, not sick, not tfuka, LITERALLY nothing — and
   // still hit premium"). These hours stay inside the מכנה and dilute the
@@ -1611,7 +1696,7 @@ function calcNoTfuka() {
     const weighted = expected * makdam;
     const fullCeiling = v('takara');
     const potential = v('shaPotential');
-    const avgShnati = v('avgShnati');
+    const avgShnati = avgShnatiVal();
     let maxMecane;
     let capNote;
     let within;
@@ -1643,8 +1728,13 @@ function calcNoTfuka() {
       // reaches the cap, crediting the absence premium the same way.
       const effectiveCap = Math.max(0, cap - r.premiatHeadrutBefore);
       const capRate = Math.min(1, effectiveCap / (present * tarif));
-      maxMecane = weighted / (capRate + 1);
-      capNote = `ועדיין מגיעים לתקרה (${fmtILS0(cap)})`;
+      // Clalit pays on the average rounded to 2 decimals, so the bar is the
+      // next 0.01 step at or above capRate, and a raw average 0.005 below that
+      // step already rounds up to it. Using capRate as-is overstated the room
+      // by enough to leave her ₪2–28 under the cap (audit 2026-11-02).
+      const payStep = Math.ceil(+(capRate * 100).toFixed(6)) / 100;
+      maxMecane = weighted / (Math.max(0, payStep - 0.005) + 1);
+      capNote = `${clinics.length > 1 ? 'במאוחד — ' : ''}ועדיין מגיעים לתקרה (${fmtILS0(cap)})`;
     } else {
       // No potential synced yet — fall back to the full-rate bar (avg 2.0)
       maxMecane = weighted / 2;
@@ -1702,16 +1792,23 @@ function calcNoTfuka() {
 
   if (expected > 0 && !overShalatCap) {
     const weighted = expected * makdam;
-    if (weighted > mecane) {
-      // Same 2-decimal rounding Clalit applies in calcClinic
-      const avg = Math.round(Math.min(weighted / mecane - 1, 1) * 100) / 100;
+    // The payment average exactly as calcClinic computes it (2 decimals, with
+    // the same .5 float guard). "Earning" = that rounded average is above 0 —
+    // weighted only a hair above מכנה rounds to 0.00 and pays ₪0 (audit
+    // 2026-11-02: this box used to say "יש פרמיה" there).
+    const avg =
+      mecane > 0
+        ? Math.round(+(Math.min(Math.max(weighted / mecane - 1, 0), 1) * 100).toFixed(6)) / 100
+        : 0;
+    if (avg > 0) {
       // Show the PAYABLE premium, capped at the personal ceiling. The raw
       // pre-cap figure that used to show here ("לפני תקרה אישית") was
       // removed 2026-07-13 — her call: "you cannot go over the ceiling, i
-      // dont care about over ceiling". Cap comes from clinicR (the same
-      // engine call the verdict above uses), so the pages can't disagree.
-      const rawPremia = present * avg * tarif;
-      const premia = clinicR ? Math.min(rawPremia, clinicR.takaraClinic) : rawPremia;
+      // dont care about over ceiling". With potential known, the number IS
+      // the engine's (clinicR, same call as the verdict above) — the two
+      // pages can't disagree on a shekel (they did by ₪40.49, audit 2026-11-02).
+      const rawPremia = clinicR ? clinicR.premiatAvodaBefore : present * avg * tarif;
+      const premia = clinicR ? clinicR.premiatAvoda : rawPremia;
       const cappedAtCeiling = clinicR !== null && rawPremia > clinicR.takaraClinic + 0.005;
       html += `<div class="alert success" style="margin-top:10px;">
         <div class="atitle">✓ עם השלט שהזנת (${shalat.toFixed(1)}) יש פרמיה</div>
@@ -1724,9 +1821,11 @@ function calcNoTfuka() {
         }</div>
       </div>`;
     } else {
-      // Earn nothing unless judged hours drop below weighted treatments —
-      // i.e. more hours must become shalat (bounded by the 50% cap).
-      const shalatNeeded = present - weighted - shalat;
+      // Earn nothing unless the rounded average reaches 0.01, i.e. מכנה drops
+      // to weighted ÷ 1.005 — more hours must become shalat (bounded by the
+      // 50% cap). Targeting weighted itself gave an average of exactly 1.0 →
+      // ₪0 (audit 2026-11-02).
+      const shalatNeeded = present - weighted / 1.005 - shalat;
       const feasible = shalat + shalatNeeded <= maxShalat;
       html += `<div class="alert warning" style="margin-top:10px;">
         <div class="atitle">עם ${expected} תפוקות והשלט שהזנת — עדיין אין פרמיה</div>
@@ -1756,6 +1855,9 @@ function switchTab(tab) {
   document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
   document.getElementById('tab-hours').classList.toggle('active', tab === 'hours');
   document.getElementById('tab-notfuka').classList.toggle('active', tab === 'notfuka');
+  ['hours', 'calc', 'notfuka'].forEach((t) =>
+    document.getElementById('tab-' + t).setAttribute('aria-selected', String(t === tab)),
+  );
   if (tab === 'notfuka') {
     ntPullFromCalc();
   }
@@ -2345,6 +2447,9 @@ function applyAllHoursToCalc() {
     }
     switchTab('calc');
     renderClinics();
+    // switchTab doesn't scroll, so the calc tab opened at the hours tab's
+    // scroll depth with ממוצע שנתי off-screen above (audit 2026-11-02).
+    window.scrollTo(0, 0);
     setTimeout(() => {
       clinics.forEach((c) => {
         const card = document.querySelector(`[data-clinic-card][data-clinic-id="${c.id}"]`);
@@ -2436,11 +2541,21 @@ function updateHoursFirstUI() {
 
 // ---- BOOTSTRAP ----
 // Detect "fresh load" BEFORE loadFromStorage migrates anything.
-const _freshLoad =
-  !localStorage.getItem(STORAGE_KEY) &&
-  !localStorage.getItem(LEGACY_KEY) &&
-  !localStorage.getItem(HOURS_KEY_V2) &&
-  !localStorage.getItem(HOURS_KEY_LEGACY);
+// Guarded: with storage blocked (Chrome "block all cookies", some in-app
+// browsers) these reads throw, and the page used to stop here with zero
+// clinic cards (audit 2026-11-02). Blocked storage = a fresh load.
+const _freshLoad = (() => {
+  try {
+    return (
+      !localStorage.getItem(STORAGE_KEY) &&
+      !localStorage.getItem(LEGACY_KEY) &&
+      !localStorage.getItem(HOURS_KEY_V2) &&
+      !localStorage.getItem(HOURS_KEY_LEGACY)
+    );
+  } catch (e) {
+    return true;
+  }
+})();
 loadFromStorage();
 loadHoursState();
 if (clinics.length === 0) {
