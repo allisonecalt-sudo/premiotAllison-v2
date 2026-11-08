@@ -167,6 +167,28 @@ test('"add N תפוקות" advice actually reaches the cap', async ({ page }) =>
   expect(misses).toEqual([]);
 });
 
+// The 50% שלט gate is UNVERIFIED (no Clalit document, no payslip). Her ruling
+// 2026-11-08: show it as unknown, not ₪0. So a month past the gate still
+// computes its amount, marks it "?", and the alert says "לא ידוע".
+test('שלט above half of present hours: amount shown with ?, alert says unknown', async ({
+  page,
+}) => {
+  await fresh(page);
+  const r = await page.evaluate(() => {
+    /* eslint-disable no-undef */
+    document.getElementById('shaPotential').value = '176';
+    document.getElementById('avgShnati').value = '0.8';
+    Object.assign(clinics[0], { shaTeken: 100, shaLaTipulit: 60, tifukot: 60 });
+    calc();
+    return calcClinic(clinics[0], 176, 5400, 0.8, 40.49, 2);
+    /* eslint-enable no-undef */
+  });
+  expect(r.belowThreshold).toBe(true);
+  expect(r.totalClinic).toBeGreaterThan(0);
+  await expect(page.locator('#r_total_sticky')).toContainText('?');
+  await expect(page.locator('#alertArea')).toContainText('לא ידוע');
+});
+
 test('storage blocked: page still renders a clinic card', async ({ browser }) => {
   const ctx = await browser.newContext();
   await ctx.addInitScript(() => {

@@ -634,9 +634,14 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
   // Coded-pct threshold (per clinic)
   const actualHoursPresent = shaAvoda + shaLaTipulit;
   const codedPct = actualHoursPresent > 0 ? shaAvoda / actualHoursPresent : 0;
+  // The 50% gate: no Clalit document says a month with שלט above half of the
+  // hours present pays ₪0, and no payslip has tested it (tools/RULINGS-tools.md
+  // D5). Her ruling Sun 2026-11-08 18:27: "if it happens can it just actually
+  // appear that it is unknown". So it no longer zeroes the premium: the amount
+  // is computed as usual and every screen marks it "?" (gateUnknown).
   const belowThreshold = actualHoursPresent > 0 ? codedPct < 0.5 : false;
   const belowAvgGate = avgTipulim <= 0;
-  const noPayment = belowThreshold || belowAvgGate;
+  const noPayment = belowAvgGate;
 
   const premiatAvodaBefore = noPayment ? 0 : totalHoursLeTashlum * avgTipulim * tarif;
   const premiatAvoda = Math.min(premiatAvodaBefore, takaraClinic);
@@ -678,7 +683,7 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
     pillLabel = 'ממתין לתפוקות';
   } else if (belowThreshold) {
     pill = 'warn';
-    pillLabel = '⚠️ סף לא הושג';
+    pillLabel = '❓ לא ידוע';
   } else if (atCap) {
     pill = 'cap';
     pillLabel = '🔒 על תקרה';
@@ -715,6 +720,11 @@ function calcClinic(c, sharedPotential, fullCeiling, avgShnati, tarif, makdam) {
 // ממוצע שנתי on the payslip is capped at 1.00 (the payment average is "עד
 // מקסימום 1"). HTML max="1" doesn't stop typing — a raw 1.9 jumped the total
 // ₪2,348 → ₪3,078 (audit 2026-11-02). Every reader clamps; calc() warns.
+// "?" after an amount whose month is past the unverified 50% שלט gate.
+function unsureMark(rs) {
+  return rs.some((r) => r && r.hasAnyInput && r.belowThreshold) ? ' ?' : '';
+}
+
 function avgShnatiVal() {
   return Math.min(Math.max(v('avgShnati'), 0), 1);
 }
@@ -800,7 +810,7 @@ function calc() {
     setReadout('premiatHeadrut', fmtILS(r.premiatHeadrut));
 
     const sum = card.querySelector('[data-clinic-sum]');
-    if (sum) sum.textContent = fmtILS(r.totalClinic);
+    if (sum) sum.textContent = fmtILS(r.totalClinic) + unsureMark([r]);
 
     const pill = card.querySelector('[data-clinic-pill]');
     if (pill) {
@@ -848,6 +858,8 @@ function calc() {
       // a rounded ₪1,283 next to ₪1,282.72 on the same card eroded trust in a
       // calculator whose only job is to match the tlush (Allison, 2026-06-10).
       setMini('takaraClinic', useTogether ? '—' : fmtILS0(r.takaraClinic));
+      // No "?" here: the card header right above already carries it, and in this
+      // narrow box the mark wrapped onto its own line (412 px, 2026-11-08).
       setMini('totalClinic', useTogether ? '—' : fmtILS(r.totalClinic));
     } else {
       // Empty clinic: show em-dashes, calm — don't draw eye to nothing.
@@ -900,7 +912,7 @@ function calc() {
           (r, i) =>
             `<div class="result-row" style="border:none; background:none;">
               <span class="rlabel">${escapeHtml(clinics[i].name || 'מרפאה ' + (i + 1))}</span>
-              <span class="rvalue">${fmtILS(r.totalClinic)}</span>
+              <span class="rvalue">${fmtILS(r.totalClinic)}${unsureMark([r])}</span>
             </div>`,
         )
         .join('');
@@ -910,7 +922,8 @@ function calc() {
   }
 
   // ---- Sticky ----
-  document.getElementById('r_total_sticky').textContent = fmtILS(totalPremium);
+  document.getElementById('r_total_sticky').textContent =
+    fmtILS(totalPremium) + unsureMark(useTogether ? [together] : results);
   // Say WHICH method the headline is showing — a silently-switched big number
   // would look like a bug next to the payslip.
   const totalLabelEl = document.getElementById('r_total_label');
@@ -988,7 +1001,12 @@ function calc() {
   } else {
     const preCap = totalAvodaBefore + totalHeadrutBefore;
     const gap = totalCeiling - totalPremium;
-    if (gap > 0.5) {
+    // Past the unverified 50% שלט gate a green "על התקרה ✓" would claim a
+    // certainty nobody has; say unknown instead (her ruling 2026-11-08).
+    if (unsureMark(useTogether ? [together] : results)) {
+      capStatusEl.className = 'cap-status';
+      capStatusEl.textContent = 'לא ידוע: שלט מעל מחצית מהנוכחות';
+    } else if (gap > 0.5) {
       capStatusEl.className = 'cap-status under';
       capStatusEl.textContent = `מתחת לתקרה — חסר ${fmtILS(gap)}`;
     } else if (preCap - totalCeiling > 0.5) {
@@ -1034,12 +1052,12 @@ function calc() {
       const togetherTotal = together.totalClinic;
       const diff = separateTotal - togetherTotal;
       const same = Math.abs(diff) < 0.5;
-      const btn = (method, label, amount, isBest) => {
+      const btn = (method, label, amount, isBest, mark) => {
         const active = useTogether === (method === 'together');
         return `<button type="button" class="ms-btn${active ? ' active' : ''}${isBest && !same ? ' best' : ''}"
           aria-pressed="${active}" onclick="setCalcMethod('${method}')">
           <span class="ms-label">${label}</span>
-          <span class="ms-amt">${fmtILS0(amount)}</span>
+          <span class="ms-amt">${fmtILS0(amount)}${mark}</span>
         </button>`;
       };
       const waiting = togetherTotal < 0.5 && separateTotal < 0.5;
@@ -1052,8 +1070,8 @@ function calc() {
             : `מאוחד שווה יותר ב־${fmtILS0(-diff)}`;
       switchEl.innerHTML = `
         <div class="method-switch" role="group" aria-label="שיטת חישוב לשתי מרפאות">
-          ${btn('separate', 'נפרד', separateTotal, diff > 0)}
-          ${btn('together', 'מאוחד', togetherTotal, diff < 0)}
+          ${btn('separate', 'נפרד', separateTotal, diff > 0, unsureMark(results))}
+          ${btn('together', 'מאוחד', togetherTotal, diff < 0, unsureMark([together]))}
         </div>
         ${same && !waiting ? '' : `<div class="ms-note">${note}</div>`}`;
     } else if (clinics.length >= 2) {
@@ -1088,9 +1106,9 @@ function calc() {
       (r) => r.hasAnyInput && r.tipulimMushkalim > 0 && r.belowAvgGate && !r.belowThreshold,
     );
     if (blocked) {
-      alertArea.innerHTML = `<div class="alert danger">
-        <div class="atitle">⚠️ סף תפוקתי לא הושג</div>
-        <div class="abody">${useTogether ? 'במאוחד — פחות מ-50% משעות הנוכחות מקודדות ב-Clicks.' : 'לפחות מרפאה אחת מתחת לסף 50% של שעות נוכחות מקודדות ב-Clicks.'}</div>
+      alertArea.innerHTML = `<div class="alert warning">
+        <div class="atitle">❓ לא ידוע אם משולמת פרמיה החודש</div>
+        <div class="abody">${useTogether ? 'במאוחד, השלט מעל מחצית משעות הנוכחות.' : 'בלפחות מרפאה אחת השלט מעל מחצית משעות הנוכחות.'} לא מצאנו מסמך של כללית שאומר מה קורה אז. הסכום מסומן ב-?, בדקי בתלוש.</div>
       </div>`;
       suggestArea.innerHTML = '';
     } else if (lowAvg) {
@@ -1151,7 +1169,8 @@ function calc() {
           }
         }
         const shaLaTipulit = parseFloat(c.shaLaTipulit) || 0;
-        // The 50% gate (see calcClinic: belowThreshold) zeroes the ENTIRE premium once
+        // The 50% gate (see calcClinic: belowThreshold; UNVERIFIED since 2026-11-08, shown as "?")
+        // may zero the ENTIRE premium once
         // coded hours fall under half the hours present. Moving work hours to שלט walks
         // straight toward it: shaAvoda shrinks while hours-present stays put. This used
         // to search up to r.shaAvoda and could therefore advise a move that pays ₪0 —
@@ -1454,7 +1473,7 @@ function downloadPDF() {
           : `<tr><td>תקרה במרפאה</td><td>${fmtILS(c.takaraClinic)}</td></tr>
       <tr><td>פרמיית עבודה</td><td>${fmtILS(c.premiatAvoda)}</td></tr>
       <tr><td>פרמיית העדרות</td><td>${fmtILS(c.premiatHeadrut)}</td></tr>
-      <tr class="accent"><td>סך פרמיה במרפאה</td><td>${fmtILS(c.totalClinic)}</td></tr>`
+      <tr class="accent"><td>סך פרמיה במרפאה</td><td>${fmtILS(c.totalClinic)}${unsureMark([c])}</td></tr>`
       }
     </table>`,
     )
@@ -1808,15 +1827,15 @@ function calcNoTfuka() {
     true,
   );
   rowsHtml += row('נמדדות לתפוקה (המכנה)', mecane.toFixed(1) + ' שעות');
-  rowsHtml += row('מקסימום שלט מותר החודש (סף 50%)', maxShalat.toFixed(1) + ' שעות');
+  rowsHtml += row('שלט עד מחצית מהנוכחות (מעבר לזה: לא ידוע)', maxShalat.toFixed(1) + ' שעות');
   rowsHtml += row('תפוקות מינימום לפרמיה כלשהי', 'יותר מ-' + minTifukot.toFixed(1));
   rowsHtml += row('תפוקות לקצב פרמיה מלא', maxTifukot.toFixed(1));
   rowsHtml += `</div>`;
 
   if (overShalatCap) {
-    html += `<div class="alert danger" style="margin-top:10px;">
-      <div class="atitle">⚠️ יותר מדי שלט</div>
-      <div class="abody">השלט עבר את סף ה-50% (${maxShalat.toFixed(1)} שעות) — במצב כזה אין פרמיה בכלל, לא משנה כמה תפוקות.</div>
+    html += `<div class="alert warning" style="margin-top:10px;">
+      <div class="atitle">❓ לא ידוע אם משולמת פרמיה</div>
+      <div class="abody">השלט מעל מחצית משעות הנוכחות (${maxShalat.toFixed(1)} שעות). לא מצאנו מסמך של כללית שאומר מה קורה אז: בדקי בתלוש.</div>
     </div>`;
   }
 
